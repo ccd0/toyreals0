@@ -2,8 +2,14 @@ Require Import QArith.
 
 Definition Rfun := positive -> Z.
 
-Definition is_valid_Rfun f :=
-  forall x y, (f x - 1) # x < (f y + 1) # y.
+Definition Rfun_le (f g : Rfun) : Prop :=
+  forall x y, (f x - 1) # x < (g y + 1) # y.
+
+Definition Rfun_eq (f g : Rfun) : Prop :=
+  Rfun_le f g /\ Rfun_le g f.
+
+Definition is_valid_Rfun (f : Rfun) : Prop :=
+  Rfun_le f f.
 
 Definition R := {f | is_valid_Rfun f}.
 

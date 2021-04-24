@@ -1,19 +1,23 @@
 Require Import QArith.
+Require Import Qround.
 
 Definition Rfun : Set :=
-  positive -> Z.
+  positive -> Q.
 
-Definition Rfun_le (f g : Rfun) : Prop :=
-  forall x y, (f x - 1) # x < (g y + 1) # y.
+Definition Rfun_le (x y : Rfun) : Prop :=
+  forall tolx toly, x tolx - (1 # tolx) < y toly + (1 # toly).
 
-Definition Rfun_lt (f g : Rfun) : Prop :=
-  exists x y, (f x + 1) # x <= (g y - 1) # y.
+Definition Rfun_lt (x y : Rfun) : Prop :=
+  exists tolx toly, x tolx + (1 # tolx) <= y toly + (1 # toly).
 
 Definition is_valid_Rfun (f : Rfun) : Prop :=
   Rfun_le f f.
 
 Definition R : Set :=
   {f | is_valid_Rfun f}.
+
+Definition RQapprox (tolerance : positive) (x : R) : Q :=
+  proj1_sig x tolerance.
 
 Definition Rle (x y : R) : Prop :=
   Rfun_le (proj1_sig x) (proj1_sig y).
@@ -33,5 +37,8 @@ Definition Rgt (x y : R) : Prop :=
 Definition Rneq (x y : R) : Prop :=
   Rlt x y \/ Rlt y x.
 
-Definition Rfun_plus (f g : Rfun) : Rfun :=
-  fun x => ((f (4 * x)%positive + g (4 * x)%positive + 2) / 4)%Z.
+Definition RQapprox_w_den (den : positive) (x : R) : Q :=
+  Qfloor (RQapprox (2 * den) x * (Zpos den # 1) + (1 # 2)) # den.
+
+Definition Rfun_plus (x y : Rfun) : Rfun :=
+  fun tol => Qred (x (2 * tol)%positive + y (2 * tol)%positive).

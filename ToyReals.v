@@ -4,6 +4,9 @@ Require Import Qround.
 Definition Rfun : Set :=
   positive -> Q.
 
+Definition Q2Rfun (x : Q) : Rfun :=
+  fun tol => x.
+
 Definition Rfun_le (x y : Rfun) : Prop :=
   forall tolx toly, x tolx - (1 # tolx) <= y toly + (1 # toly).
 
@@ -15,6 +18,16 @@ Definition is_valid_Rfun (f : Rfun) : Prop :=
 
 Definition R : Set :=
   {f | is_valid_Rfun f}.
+
+Theorem Q2Rfun_valid : forall x, is_valid_Rfun (Q2Rfun x).
+  intros x tol1 tol2.
+  apply Qplus_le_r.
+  compute.
+  discriminate.
+Qed.
+
+Definition Q2R (x : Q) : R :=
+  exist is_valid_Rfun (Q2Rfun x) (Q2Rfun_valid x).
 
 Definition RQapprox (tolerance : positive) (x : R) : Q :=
   proj1_sig x tolerance.

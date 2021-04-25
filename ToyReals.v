@@ -49,6 +49,22 @@ Definition Rgt (x y : R) : Prop :=
 Definition Rneq (x y : R) : Prop :=
   Rlt x y \/ Rlt y x.
 
+Theorem Rneq0_exists_witness :
+  forall x, Rneq x (Q2R 0) -> exists t,
+    RQapprox t x + (1 # t) < 0 \/ 0 < RQapprox t x - (1 # t).
+Proof.
+  intros x [H|H]; destruct H as [t1 [t2 H]].
+  - exists t1.
+    left.
+    apply (Qlt_trans _ _ _ H).
+    reflexivity.
+  - exists t2.
+    right.
+    revert H.
+    apply Qlt_trans.
+    reflexivity.
+Qed.
+
 Definition RQapprox_w_den (den : positive) (x : R) : Q :=
   Qfloor (RQapprox (2 * den) x * (Zpos den # 1) + (1 # 2)) # den.
 

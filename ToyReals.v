@@ -28,9 +28,6 @@ Qed.
 Definition Q2R (x : Q) : R :=
   exist is_valid_Rfun (Q2Rfun x) (Q2Rfun_valid x).
 
-Definition RQapprox (tolerance : positive) (x : R) : Q :=
-  proj1_sig x tolerance.
-
 Definition Rle (x y : R) : Prop :=
   Rfun_le (proj1_sig x) (proj1_sig y).
 
@@ -48,6 +45,31 @@ Definition Rgt (x y : R) : Prop :=
 
 Definition Rneq (x y : R) : Prop :=
   Rlt x y \/ Rlt y x.
+
+Definition RQapprox (tolerance : positive) (x : R) : Q :=
+  proj1_sig x tolerance.
+
+Theorem RQapprox_spec_l :
+  forall t x, Rle (Q2R (RQapprox t x - (1 # t))) x.
+Proof.
+  intros t [x Hx] t1 t2.
+  apply (Qle_trans _ (x t - (1 # t))).
+  - rewrite <- (Qplus_0_r (x t - (1 # t))).
+    apply Qplus_le_r.
+    discriminate.
+  - apply Hx.
+Qed.
+
+Theorem RQapprox_spec_u :
+  forall t x, Rle x (Q2R (RQapprox t x + (1 # t))).
+Proof.
+  intros t [x Hx] t1 t2.
+  apply (Qle_trans _ (x t + (1 # t))).
+  - apply Hx.
+  - rewrite <- (Qplus_0_r (x t + (1 # t))).
+    apply Qplus_le_r.
+    discriminate.
+Qed.
 
 Theorem Rneq0_exists_witness :
   forall x, Rneq x (Q2R 0) -> exists t,

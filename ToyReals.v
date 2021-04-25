@@ -5,10 +5,10 @@ Definition Rfun : Set :=
   positive -> Q.
 
 Definition Rfun_le (x y : Rfun) : Prop :=
-  forall tolx toly, x tolx - (1 # tolx) < y toly + (1 # toly).
+  forall tolx toly, x tolx - (1 # tolx) <= y toly + (1 # toly).
 
 Definition Rfun_lt (x y : Rfun) : Prop :=
-  exists tolx toly, x tolx + (1 # tolx) <= y toly - (1 # toly).
+  exists tolx toly, x tolx + (1 # tolx) < y toly - (1 # toly).
 
 Definition is_valid_Rfun (f : Rfun) : Prop :=
   Rfun_le f f.

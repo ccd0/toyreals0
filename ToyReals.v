@@ -22,7 +22,6 @@ Definition R : Set :=
 Theorem Q2Rfun_valid : forall x, is_valid_Rfun (Q2Rfun x).
   intros x tol1 tol2.
   apply Qplus_le_r.
-  compute.
   discriminate.
 Qed.
 

@@ -77,7 +77,7 @@ Theorem Q2R_lt : forall x y, x < y -> Rlt (Q2R x) (Q2R y).
   apply (Qplus_lt_l _ _ x).
   ring_simplify.
   trivial.
-Qed.
+Defined.
 
 Theorem Q2R_neq : forall x y, ~ x == y -> Rneq (Q2R x) (Q2R y).
   intros x y H.
@@ -87,7 +87,7 @@ Theorem Q2R_neq : forall x y, ~ x == y -> Rneq (Q2R x) (Q2R y).
   - right.
     apply Q2R_lt, H2.
   - tauto.
-Qed.
+Defined.
 
 Definition RQapprox (tolerance : positive) (x : R) : Q :=
   proj1_sig x tolerance.
@@ -133,7 +133,7 @@ Proof.
       apply (Qlt_trans _ (1 # t1)); trivial.
       reflexivity.
     + apply Qle_Qabs.
-Qed.
+Defined.
 
 Definition Qlt_dec (x y : Q) : {x < y} + {~ x < y} :=
   match Qlt_le_dec x y with
@@ -168,7 +168,7 @@ Proof.
   apply (Qplus_lt_l _ _ (1 # t)).
   ring_simplify.
   trivial.
-Qed.
+Defined.
 
 Lemma Rneq0_witness_neg :
   forall t x, 1 # t < Qabs(RQapprox t x) ->
@@ -186,7 +186,7 @@ Proof.
   apply (Qplus_lt_l _ _ (1 # t)).
   ring_simplify.
   trivial.
-Qed.
+Defined.
 
 Definition Rpositive_dec (x : R) (p : Rneq x (Q2R 0)) : {Rgt x (Q2R 0)} + {Rlt x (Q2R 0)} :=
   match Qlt_le_dec (RQapprox (Rneq0_witness x p) x) 0 with
@@ -203,7 +203,7 @@ Proof.
   intros x p.
   unfold Rpositive_bool.
   destruct (Rpositive_dec x p) as [H|H]; trivial.
-Qed.
+Defined.
 
 Definition RQapprox_w_den (den : positive) (x : R) : Q :=
   Qfloor (RQapprox (2 * den) x * (Zpos den # 1) + (1 # 2)) # den.

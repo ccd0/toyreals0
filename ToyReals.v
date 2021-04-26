@@ -158,10 +158,10 @@ Qed.
 
 Lemma Rneq0_witness_pos :
   forall t x, 1 # t < Qabs(RQapprox t x) ->
-    0 <= RQapprox t x -> Rgt x (Q2R 0).
+    0 < RQapprox t x -> Rgt x (Q2R 0).
 Proof.
   intros t x H1 H2.
-  rewrite Qabs_pos in H1 by trivial.
+  rewrite Qabs_pos in H1 by apply Qlt_le_weak, H2.
   exists (Qsmaller (RQapprox t x - (1 # t))).
   exists t.
   apply Qsmaller_spec.
@@ -172,10 +172,10 @@ Defined.
 
 Lemma Rneq0_witness_neg :
   forall t x, 1 # t < Qabs(RQapprox t x) ->
-    RQapprox t x < 0 -> Rlt x (Q2R 0).
+    RQapprox t x <= 0 -> Rlt x (Q2R 0).
 Proof.
   intros t x H1 H2.
-  rewrite Qabs_neg in H1 by apply Qlt_le_weak, H2.
+  rewrite Qabs_neg in H1 by trivial.
   exists t.
   exists (Qsmaller (- (RQapprox t x + (1 # t)))).
   setoid_rewrite Qplus_0_l.
@@ -189,9 +189,9 @@ Proof.
 Defined.
 
 Definition Rpositive_dec (x : R) (p : Rneq x (Q2R 0)) : {Rgt x (Q2R 0)} + {Rlt x (Q2R 0)} :=
-  match Qlt_le_dec (RQapprox (Rneq0_witness x p) x) 0 with
-  | left pn => right (Rneq0_witness_neg (Rneq0_witness x p) x (Rneq0_witness_spec x p) pn)
-  | right pp => left (Rneq0_witness_pos (Rneq0_witness x p) x (Rneq0_witness_spec x p) pp)
+  match Qlt_le_dec 0 (RQapprox (Rneq0_witness x p) x) with
+  | left pp  => left  (Rneq0_witness_pos (Rneq0_witness x p) x (Rneq0_witness_spec x p) pp)
+  | right pn => right (Rneq0_witness_neg (Rneq0_witness x p) x (Rneq0_witness_spec x p) pn)
   end.
 
 Definition Rpositive_bool (x : R) (p : Rneq x (Q2R 0)) : bool :=

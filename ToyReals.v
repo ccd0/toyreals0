@@ -16,6 +16,20 @@ Definition Rfun_le (x y : Rfun) : Prop :=
 Definition Rfun_lt (x y : Rfun) : Prop :=
   exists tolx toly, x tolx + (1 # tolx) < y toly - (1 # toly).
 
+Theorem Rfun_le_not_lt : forall x y, Rfun_le x y <-> ~ Rfun_lt y x.
+  intros x y.
+  split.
+  - intros H1 [tx [ty H2]].
+    specialize (H1 ty tx).
+    contradict H2.
+    apply Qle_not_lt, H1.
+  - intros H tx ty.
+    apply Qnot_lt_le.
+    contradict H.
+    exists ty, tx.
+    apply H.
+Qed.
+
 Definition is_valid_Rfun (f : Rfun) : Prop :=
   Rfun_le f f.
 

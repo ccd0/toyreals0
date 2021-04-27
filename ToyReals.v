@@ -41,6 +41,11 @@ Definition RQapprox (x : R) (tolerance : positive) : Q :=
   | exist _ f _ => f
   end tolerance.
 
+Theorem RQapprox_spec : forall x, is_valid_Rfun (RQapprox x).
+  intros [x H].
+  apply H.
+Qed.
+
 Theorem Q2Rfun_valid : forall x, is_valid_Rfun (Q2Rfun x).
   intros x tol1 tol2.
   apply Qplus_le_r.
@@ -111,21 +116,25 @@ Defined.
 Theorem RQapprox_lower_bound :
   forall x t, Rle (Q2R (RQapprox x t - (1 # t))) x.
 Proof.
-  intros [x Hx] t t1 t2.
-  apply (Qle_trans _ (x t - (1 # t))).
-  - rewrite <- (Qplus_0_r (x t - (1 # t))).
+  intros x t t1 t2.
+  cbn.
+  unfold Q2Rfun.
+  apply (Qle_trans _ (RQapprox x t - (1 # t))).
+  - rewrite <- (Qplus_0_r (RQapprox x t - (1 # t))) at 2.
     apply Qplus_le_r.
     discriminate.
-  - apply Hx.
+  - apply RQapprox_spec.
 Qed.
 
 Theorem RQapprox_upper_bound :
   forall x t, Rle x (Q2R (RQapprox x t + (1 # t))).
 Proof.
-  intros [x Hx] t t1 t2.
-  apply (Qle_trans _ (x t + (1 # t))).
-  - apply Hx.
-  - rewrite <- (Qplus_0_r (x t + (1 # t))).
+  intros x t t1 t2.
+  cbn.
+  unfold Q2Rfun.
+  apply (Qle_trans _ (RQapprox x t + (1 # t))).
+  - apply RQapprox_spec.
+  - rewrite <- (Qplus_0_r (RQapprox x t + (1 # t))) at 1.
     apply Qplus_le_r.
     discriminate.
 Qed.

@@ -1,6 +1,5 @@
 Require Import QArith.
 Require Import Qround.
-Require Import Qabs.
 Require Import ConstructiveEpsilon.
 Require Import Lia.
 

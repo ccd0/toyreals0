@@ -1,7 +1,6 @@
 Require Import QArith.
 Require Import Qround.
 Require Import ConstructiveEpsilon.
-Require Import Lia.
 
 Definition Rfun : Set :=
   positive -> Q.
@@ -72,16 +71,24 @@ Theorem Rle_not_lt : forall x y, Rle x y <-> ~ Rlt y x.
 Qed.
 
 Definition Qsmaller (x : Q) : positive :=
-  2 * Qden x.
+  Qden x + 1.
 
 Theorem Qsmaller_spec :
   forall x : Q, x > 0 -> 1 # (Qsmaller x) < x.
 Proof.
   intros [p q] H.
-  unfold Qsmaller, Qlt, Qnum, Qden in *.
-  rewrite Pos2Z.inj_mul.
-  rewrite Zmult_assoc.
-  apply Zmult_lt_compat_r; lia.
+  unfold Qlt in *.
+  cbn in *.
+  rewrite Pos2Z.inj_add.
+  rewrite <- (Z.mul_1_l (Z.pos q)) at 1.
+  apply Zmult_lt_compat2.
+  - rewrite Z.mul_1_r in H.
+    split; [reflexivity|].
+    apply (Zlt_le_succ 0), H.
+  - split.
+    + apply Pos2Z.is_pos.
+    + apply Z.lt_add_pos_r.
+      reflexivity.
 Qed.
 
 Theorem Q2R_lt : forall x y, x < y -> Rlt (Q2R x) (Q2R y).

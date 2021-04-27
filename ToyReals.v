@@ -10,12 +10,12 @@ Definition Rfun : Set :=
 Definition is_valid_Rfun (x : Rfun) : Prop :=
   forall t1 t2, x t1 - (1 # t1) <= x t2 + (1 # t2).
 
-Definition R : Set :=
-  {x | is_valid_Rfun x}.
+Inductive R : Set :=
+  | Rmake (x : Rfun) (p : is_valid_Rfun x) : R.
 
 Definition RQapprox (x : R) (tolerance : positive) : Q :=
   match x with
-  | exist _ f _ => f
+  | Rmake f _ => f
   end tolerance.
 
 Theorem RQapprox_spec : forall x, is_valid_Rfun (RQapprox x).
@@ -30,7 +30,7 @@ Theorem Q2Rfun_valid : forall x, is_valid_Rfun (fun t => x).
 Qed.
 
 Definition Q2R (x : Q) : R :=
-  exist is_valid_Rfun (fun t => x) (Q2Rfun_valid x).
+  Rmake (fun t => x) (Q2Rfun_valid x).
 
 Definition Rle (x y : R) : Prop :=
   forall tx ty, RQapprox x tx - (1 # tx) <= RQapprox y ty + (1 # ty).

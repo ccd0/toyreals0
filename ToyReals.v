@@ -23,6 +23,12 @@ Theorem RQapprox_spec : forall x, is_valid_Rfun (RQapprox x).
   apply H.
 Qed.
 
+Definition R_lower_bound (x : R) (t : positive) : Q :=
+  RQapprox x t - (1 # t).
+
+Definition R_upper_bound (x : R) (t : positive) : Q :=
+  RQapprox x t + (1 # t).
+
 Theorem Q2Rfun_valid : forall x, is_valid_Rfun (fun t => x).
   intros x tol1 tol2.
   apply Qplus_le_r.
@@ -33,7 +39,7 @@ Definition Q2R (x : Q) : R :=
   Rmake (fun t => x) (Q2Rfun_valid x).
 
 Definition Rle (x y : R) : Prop :=
-  forall tx ty, RQapprox x tx - (1 # tx) <= RQapprox y ty + (1 # ty).
+  forall tx ty, R_lower_bound x tx <= R_upper_bound y ty.
 
 Definition Rge (x y : R) : Prop :=
   Rle y x.
@@ -42,7 +48,7 @@ Definition Req (x y : R) : Prop :=
   Rle x y /\ Rle y x.
 
 Definition Rlt (x y : R) : Prop :=
-  exists tx ty, RQapprox x tx + (1 # tx) < RQapprox y ty - (1 # ty).
+  exists tx ty, R_upper_bound x tx < R_lower_bound y ty.
 
 Definition Rgt (x y : R) : Prop :=
   Rlt y x.
@@ -81,6 +87,7 @@ Theorem Q2R_lt : forall x y, x < y -> Rlt (Q2R x) (Q2R y).
   intros x y H.
   pose (Qsmaller ((y - x) / 2)) as t.
   exists t, t.
+  unfold R_upper_bound, R_lower_bound.
   cbn - [t].
   apply (Qplus_lt_l _ _ ((1 # t) - x)).
   apply (Qmult_lt_r _ _ (1 # 2)); [reflexivity|].
@@ -104,24 +111,23 @@ Theorem Q2R_neq : forall x y, ~ x == y -> Rneq (Q2R x) (Q2R y).
   - tauto.
 Defined.
 
-Theorem RQapprox_lower_bound :
-  forall x t, Rle (Q2R (RQapprox x t - (1 # t))) x.
+Theorem R_lower_bound_spec :
+  forall x t, Rle (Q2R (R_lower_bound x t)) x.
 Proof.
   intros x t t1 t2.
-  cbn.
-  apply (Qle_trans _ (RQapprox x t - (1 # t))).
-  - rewrite <- (Qplus_0_r (RQapprox x t - (1 # t))) at 2.
+  apply (Qle_trans _ (R_lower_bound x t)).
+  - unfold R_lower_bound.
+    rewrite <- (Qplus_0_r (RQapprox x t - (1 # t))) at 2.
     apply Qplus_le_r.
     discriminate.
   - apply RQapprox_spec.
 Qed.
 
-Theorem RQapprox_upper_bound :
-  forall x t, Rle x (Q2R (RQapprox x t + (1 # t))).
+Theorem R_upper_bound_spec :
+  forall x t, Rle x (Q2R (R_upper_bound x t)).
 Proof.
   intros x t t1 t2.
-  cbn.
-  apply (Qle_trans _ (RQapprox x t + (1 # t))).
+  apply (Qle_trans _ (R_upper_bound x t)).
   - apply RQapprox_spec.
   - rewrite <- (Qplus_0_r (RQapprox x t + (1 # t))) at 1.
     apply Qplus_le_r.
@@ -176,9 +182,10 @@ Lemma Rneq0_witness_pos :
 Proof.
   intros x t H1 H2.
   rewrite Qabs_pos in H1 by apply Qlt_le_weak, H2.
-  exists (Qsmaller (RQapprox x t - (1 # t))).
+  exists (Qsmaller (R_lower_bound x t)).
   exists t.
   apply Qsmaller_spec.
+  unfold R_lower_bound.
   apply (Qplus_lt_l _ _ (1 # t)).
   ring_simplify.
   trivial.
@@ -191,11 +198,12 @@ Proof.
   intros x t H1 H2.
   rewrite Qabs_neg in H1 by trivial.
   exists t.
-  exists (Qsmaller (- (RQapprox x t + (1 # t)))).
+  exists (Qsmaller (- R_upper_bound x t)).
   setoid_rewrite Qplus_0_l.
   setoid_rewrite <- Qopp_opp at 1.
   apply Qopp_lt_compat.
   apply Qsmaller_spec.
+  unfold R_upper_bound.
   rewrite Qopp_plus.
   apply (Qplus_lt_l _ _ (1 # t)).
   ring_simplify.

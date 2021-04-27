@@ -108,7 +108,7 @@ Theorem Q2R_neq : forall x y, ~ x == y -> Rneq (Q2R x) (Q2R y).
   - tauto.
 Defined.
 
-Theorem RQapprox_spec_l :
+Theorem RQapprox_lower_bound :
   forall x t, Rle (Q2R (RQapprox x t - (1 # t))) x.
 Proof.
   intros [x Hx] t t1 t2.
@@ -119,7 +119,7 @@ Proof.
   - apply Hx.
 Qed.
 
-Theorem RQapprox_spec_u :
+Theorem RQapprox_upper_bound :
   forall x t, Rle x (Q2R (RQapprox x t + (1 # t))).
 Proof.
   intros [x Hx] t t1 t2.

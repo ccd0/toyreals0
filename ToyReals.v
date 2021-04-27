@@ -18,16 +18,18 @@ Definition RQapprox (x : R) (tolerance : positive) : Q :=
   | Rmake f _ => f
   end tolerance.
 
-Theorem RQapprox_spec : forall x, is_valid_Rfun (RQapprox x).
-  intros [x H].
-  apply H.
-Qed.
-
 Definition R_lower_bound (x : R) (t : positive) : Q :=
   RQapprox x t - (1 # t).
 
 Definition R_upper_bound (x : R) (t : positive) : Q :=
   RQapprox x t + (1 # t).
+
+Theorem RQapprox_spec :
+  forall x t1 t2, R_lower_bound x t1 <= R_upper_bound x t2.
+Proof.
+  intros [x H].
+  apply H.
+Qed.
 
 Theorem Q2Rfun_valid : forall x, is_valid_Rfun (fun t => x).
   intros x tol1 tol2.
@@ -134,101 +136,211 @@ Proof.
     discriminate.
 Qed.
 
-Lemma Rneq0_exists_witness :
-  forall x, Rneq x (Q2R 0) -> exists t, 1 # t < Qabs (RQapprox x t).
-Proof.
-  intros x [H|H]; destruct H as [t1 [t2 H]].
-  - exists t1.
-    apply (Qlt_le_trans _ (- RQapprox x t1)).
-    + apply (Qplus_lt_r _ _ (RQapprox x t1)).
-      rewrite Qplus_opp_r.
-      apply (Qlt_trans _ (- (1 # t2))); trivial.
-      reflexivity.
-    + rewrite <- Qabs_opp.
-      apply Qle_Qabs.
-  - exists t2.
-    apply (Qlt_le_trans _ (RQapprox x t2)).
-    + apply (Qplus_lt_l _ _ (- (1 # t2))).
-      rewrite Qplus_opp_r.
-      apply (Qlt_trans _ (1 # t1)); trivial.
-      reflexivity.
-    + apply Qle_Qabs.
-Defined.
-
-Definition Qlt_dec (x y : Q) : {x < y} + {~ x < y} :=
-  match Qlt_le_dec x y with
-  | left p => left p
-  | right p => right (Qle_not_lt y x p)
-  end.
-
-Definition Rneq0_witness (x : R) (p : Rneq x (Q2R 0)) :=
-  constructive_ground_epsilon
-    positive Pos.to_nat Pos.of_nat Pos2Nat.id
-    (fun t => 1 # t < Qabs(RQapprox x t))
-    (fun t => Qlt_dec (1 # t) (Qabs (RQapprox x t)))
-    (Rneq0_exists_witness x p).
-
-Lemma Rneq0_witness_spec :
-  forall x p, (1 # Rneq0_witness x p) < Qabs (RQapprox x (Rneq0_witness x p)).
-Proof.
-  intros x p.
-  unfold Rneq0_witness.
-  apply constructive_ground_epsilon_spec.
-Qed.
-
-Lemma Rneq0_witness_pos :
-  forall x t, 1 # t < Qabs(RQapprox x t) ->
-    0 < RQapprox x t -> Rgt x (Q2R 0).
-Proof.
-  intros x t H1 H2.
-  rewrite Qabs_pos in H1 by apply Qlt_le_weak, H2.
-  exists (Qsmaller (R_lower_bound x t)).
-  exists t.
-  apply Qsmaller_spec.
-  unfold R_lower_bound.
-  apply (Qplus_lt_l _ _ (1 # t)).
-  ring_simplify.
-  trivial.
-Defined.
-
-Lemma Rneq0_witness_neg :
-  forall x t, 1 # t < Qabs(RQapprox x t) ->
-    RQapprox x t <= 0 -> Rlt x (Q2R 0).
-Proof.
-  intros x t H1 H2.
-  rewrite Qabs_neg in H1 by trivial.
-  exists t.
-  exists (Qsmaller (- R_upper_bound x t)).
-  setoid_rewrite Qplus_0_l.
-  setoid_rewrite <- Qopp_opp at 1.
-  apply Qopp_lt_compat.
-  apply Qsmaller_spec.
-  unfold R_upper_bound.
-  rewrite Qopp_plus.
-  apply (Qplus_lt_l _ _ (1 # t)).
-  ring_simplify.
-  trivial.
-Defined.
-
-Definition Rpositive_dec (x : R) (p : Rneq x (Q2R 0)) : {Rgt x (Q2R 0)} + {Rlt x (Q2R 0)} :=
-  match Qlt_le_dec 0 (RQapprox x (Rneq0_witness x p)) with
-  | left pp  => left  (Rneq0_witness_pos x (Rneq0_witness x p) (Rneq0_witness_spec x p) pp)
-  | right pn => right (Rneq0_witness_neg x (Rneq0_witness x p) (Rneq0_witness_spec x p) pn)
-  end.
-
-Definition Rpositive_bool (x : R) (p : Rneq x (Q2R 0)) : bool :=
-  if Rpositive_dec x p then true else false.
-
-Theorem Rpositive_bool_spec :
-  forall x p, if Rpositive_bool x p then Rgt x (Q2R 0) else Rlt x (Q2R 0).
-Proof.
-  intros x p.
-  unfold Rpositive_bool.
-  destruct (Rpositive_dec x p) as [H|H]; trivial.
-Defined.
-
 Definition RQapprox_w_den (x : R) (den : positive) : Q :=
   Qfloor (RQapprox x (2 * den) * (Zpos den # 1) + (1 # 2)) # den.
 
 Definition Rfun_plus (x y : Rfun) : Rfun :=
   fun tol => Qred (x (2 * tol)%positive + y (2 * tol)%positive).
+
+Definition is_Rlt_witness (x y : R) (t : positive * positive) : Prop :=
+  R_upper_bound x (fst t) < R_lower_bound y (snd t).
+
+Lemma is_Rlt_witness_spec :
+  forall x y t, is_Rlt_witness x y t -> Rlt x y.
+Proof.
+  intros x y [tx ty] H.
+  exists tx, ty.
+  exact H.
+Defined.
+
+Definition is_Rlt_witness_bool (x y : R) (t : positive * positive) : bool :=
+  negb (Qle_bool (R_lower_bound y (snd t)) (R_upper_bound x (fst t))).
+
+Lemma is_Rlt_witness_bool_spec :
+  forall x y t, is_Rlt_witness_bool x y t = true <-> is_Rlt_witness x y t.
+Proof.
+  intros x y [tx ty].
+  unfold is_Rlt_witness_bool, is_Rlt_witness.
+  cbn.
+  rewrite negb_true_iff.
+  rewrite <- not_true_iff_false.
+  rewrite Qle_bool_iff.
+  split; [apply Qnot_le_lt|apply Qlt_not_le].
+Qed.
+
+Definition wsame (t : positive) : positive * positive := (t, t).
+
+Definition Rlt_witness_make_same (x y : R) (t : positive * positive) : positive :=
+  Qsmaller ((R_lower_bound y (snd t) - R_upper_bound x (fst t)) / 4).
+
+Lemma Rlt_witness_make_same_spec :
+  forall x y t,
+    is_Rlt_witness x y t ->
+      forall t2, (Rlt_witness_make_same x y t <= t2)%positive ->
+        is_Rlt_witness x y (wsame t2).
+Proof.
+  intros x y [tx ty] H t Ht.
+  unfold is_Rlt_witness.
+  setoid_replace (R_upper_bound x t)
+    with (R_lower_bound x t + 2 * (1 # t))
+    by (unfold R_upper_bound, R_lower_bound; ring).
+  setoid_replace (R_lower_bound y t)
+    with (R_upper_bound y t - 2 * (1 # t))
+    by (unfold R_upper_bound, R_lower_bound; ring).
+  apply (Qle_lt_trans _ (R_upper_bound x tx + 2 * (1 # t)));
+    [apply Qplus_le_l, RQapprox_spec|].
+  apply (Qlt_le_trans _ (R_lower_bound y ty - 2 * (1 # t)));
+    [|apply Qplus_le_l, RQapprox_spec].
+  apply (Qplus_lt_l _ _ (2 * (1 # t) - R_upper_bound x tx)).
+  apply (Qmult_lt_l _ _ (1 # 4)); [reflexivity|].
+  ring_simplify.
+  setoid_replace ((-1 # 4) * R_upper_bound x tx + (1 # 4) * R_lower_bound y ty)
+    with ((R_lower_bound y ty - R_upper_bound x tx) / 4) by field.
+  unfold Rlt_witness_make_same in Ht.
+  set (z := (R_lower_bound y ty - R_upper_bound x tx) / 4) in *.
+  apply (Qle_lt_trans _ (1 # (Qsmaller z)));
+    [apply Pos2Z.pos_le_pos, Ht|].
+  apply Qsmaller_spec.
+  subst z.
+  setoid_replace 0 with (0 / 4) by reflexivity.
+  apply Qmult_lt_r; [reflexivity|].
+  setoid_rewrite <- (Qplus_opp_r (R_upper_bound x tx)).
+  apply Qplus_lt_l.
+  apply H.
+Qed.
+
+Definition is_Rneq_witness (x y : R) (t : positive * positive) : Prop :=
+  is_Rlt_witness x y t \/ is_Rlt_witness y x t.
+
+Lemma is_Rneq_witness_spec :
+  forall x y t, is_Rneq_witness x y t -> Rneq x y.
+Proof.
+  intros x y t [H|H]; [left|right];
+    apply (is_Rlt_witness_spec _ _ t H).
+Defined.
+
+Lemma Rneq_witness_exists :
+  forall x y, Rneq x y -> exists t, is_Rneq_witness x y t.
+Proof.
+  intros x y p.
+  destruct p as [p|p];
+    destruct p as [t1 [t2 p]];
+    exists ((t1, t2));
+    [left|right];
+    exact p.
+Defined.
+
+Definition is_Rneq_witness_bool (x y : R) (t : positive * positive) : bool :=
+  is_Rlt_witness_bool x y t || is_Rlt_witness_bool y x t.
+
+Lemma is_Rneq_witness_bool_spec :
+  forall x y t, is_Rneq_witness_bool x y t = true <-> is_Rneq_witness x y t.
+Proof.
+  intros x y t.
+  unfold is_Rneq_witness_bool, is_Rneq_witness.
+  rewrite orb_true_iff.
+  repeat rewrite is_Rlt_witness_bool_spec.
+  tauto.
+Qed.
+
+Lemma Rneq_witness_not_lt_gt :
+  forall x y t, is_Rneq_witness x y t ->
+    is_Rlt_witness_bool x y t = false -> is_Rlt_witness y x t.
+Proof.
+  intros x y t H1 H2.
+  destruct H1 as [H1|H1]; trivial.
+  apply is_Rlt_witness_bool_spec in H1.
+  contradict H1.
+  rewrite H2.
+  discriminate.
+Qed.
+
+Definition Rneq_witness_make_same (x y : R) (t : positive * positive) : positive :=
+  if is_Rlt_witness_bool x y t then
+    Rlt_witness_make_same x y t
+  else
+    Rlt_witness_make_same y x t.
+
+Lemma Rneq_witness_make_same_spec :
+  forall x y t,
+    is_Rneq_witness x y t ->
+      forall t2, (Rneq_witness_make_same x y t <= t2)%positive ->
+        is_Rneq_witness x y (wsame t2).
+Proof.
+  intros x y t Ht t2 Ht2.
+  unfold Rneq_witness_make_same, is_Rneq_witness in *.
+  destruct (is_Rlt_witness_bool x y t) eqn:E.
+  - left.
+    apply (Rlt_witness_make_same_spec x y t); trivial.
+    apply is_Rlt_witness_bool_spec, E.
+  - right.
+    apply (Rlt_witness_make_same_spec y x t); trivial.
+    apply Rneq_witness_not_lt_gt; trivial.
+Qed.
+
+Definition wlog2 (t : positive) : nat :=
+  Nat.log2_up (Pos.to_nat t).
+
+Definition wpow2 (n : nat) :=
+  Pos.of_nat (2 ^ n).
+
+Lemma wlog2_spec :
+  forall t, (t <= wpow2 (wlog2 t))%positive.
+Proof.
+  intro t.
+  unfold wpow2, wlog2.
+  apply Pos2Nat.inj_le.
+  rewrite Nat2Pos.id by (apply Nat.pow_nonzero; discriminate).
+  apply Nat.log2_log2_up_spec.
+  apply Pos2Nat.is_pos.
+Qed.
+
+Definition is_Rneq_witness_pow2 (x y : R) (n : nat) : bool :=
+  is_Rneq_witness_bool x y (wsame (wpow2 n)).
+
+Lemma Rneq_witness_pow2_exists :
+  forall x y, Rneq x y -> exists n, is_Rneq_witness_pow2 x y n = true.
+Proof.
+  intros x y p.
+  apply Rneq_witness_exists in p.
+  destruct p as [t p].
+  set (t2 := Rneq_witness_make_same x y t).
+  exists (wlog2 t2).
+  apply is_Rneq_witness_bool_spec.
+  apply (Rneq_witness_make_same_spec x y t p).
+  apply wlog2_spec.
+Defined.
+
+Definition get_Rneq_witness (x y : R) (p : Rneq x y) : positive * positive :=
+  wsame (wpow2 (
+    constructive_ground_epsilon_nat
+      (fun n => is_Rneq_witness_pow2 x y n = true)
+      (fun n => bool_dec (is_Rneq_witness_pow2 x y n) true)
+      (Rneq_witness_pow2_exists x y p)
+  )).
+
+Lemma get_Rneq_witness_spec :
+  forall x y p, is_Rneq_witness x y (get_Rneq_witness x y p).
+Proof.
+  intros x y p.
+  unfold get_Rneq_witness.
+  apply is_Rneq_witness_bool_spec.
+  apply constructive_ground_epsilon_spec_nat.
+Defined.
+
+Definition Rlt_bool (x y : R) (p : Rneq x y) : bool :=
+  is_Rlt_witness_bool x y (get_Rneq_witness x y p).
+
+Theorem Rlt_bool_spec :
+  forall x y p, if Rlt_bool x y p then Rlt x y else Rlt y x.
+Proof.
+  intros x y p.
+  unfold Rlt_bool.
+  set (t := get_Rneq_witness x y p).
+  destruct (is_Rlt_witness_bool x y t) eqn:E.
+  - apply (is_Rlt_witness_spec x y t).
+    apply is_Rlt_witness_bool_spec, E.
+  - apply (is_Rlt_witness_spec y x t).
+    apply Rneq_witness_not_lt_gt; trivial.
+    apply get_Rneq_witness_spec.
+Defined.

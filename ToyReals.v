@@ -7,9 +7,6 @@ Require Import Lia.
 Definition Rfun : Set :=
   positive -> Q.
 
-Definition Q2Rfun (x : Q) : Rfun :=
-  fun tol => x.
-
 Definition Rfun_le (x y : Rfun) : Prop :=
   forall tolx toly, x tolx - (1 # tolx) <= y toly + (1 # toly).
 
@@ -46,14 +43,14 @@ Theorem RQapprox_spec : forall x, is_valid_Rfun (RQapprox x).
   apply H.
 Qed.
 
-Theorem Q2Rfun_valid : forall x, is_valid_Rfun (Q2Rfun x).
+Theorem Q2Rfun_valid : forall x, is_valid_Rfun (fun t => x).
   intros x tol1 tol2.
   apply Qplus_le_r.
   discriminate.
 Qed.
 
 Definition Q2R (x : Q) : R :=
-  exist is_valid_Rfun (Q2Rfun x) (Q2Rfun_valid x).
+  exist is_valid_Rfun (fun t => x) (Q2Rfun_valid x).
 
 Definition Rle (x y : R) : Prop :=
   Rfun_le (RQapprox x) (RQapprox y).
@@ -90,7 +87,7 @@ Theorem Q2R_lt : forall x y, x < y -> Rlt (Q2R x) (Q2R y).
   intros x y H.
   pose (Qsmaller ((y - x) / 2)) as t.
   exists t, t.
-  unfold Q2R, RQapprox, Q2Rfun.
+  cbn - [t].
   apply (Qplus_lt_l _ _ ((1 # t) - x)).
   apply (Qmult_lt_r _ _ (1 # 2)); [reflexivity|].
   ring_simplify.
@@ -118,7 +115,6 @@ Theorem RQapprox_lower_bound :
 Proof.
   intros x t t1 t2.
   cbn.
-  unfold Q2Rfun.
   apply (Qle_trans _ (RQapprox x t - (1 # t))).
   - rewrite <- (Qplus_0_r (RQapprox x t - (1 # t))) at 2.
     apply Qplus_le_r.
@@ -131,7 +127,6 @@ Theorem RQapprox_upper_bound :
 Proof.
   intros x t t1 t2.
   cbn.
-  unfold Q2Rfun.
   apply (Qle_trans _ (RQapprox x t + (1 # t))).
   - apply RQapprox_spec.
   - rewrite <- (Qplus_0_r (RQapprox x t + (1 # t))) at 1.

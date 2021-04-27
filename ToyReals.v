@@ -7,31 +7,11 @@ Require Import Lia.
 Definition Rfun : Set :=
   positive -> Q.
 
-Definition Rfun_le (x y : Rfun) : Prop :=
-  forall tolx toly, x tolx - (1 # tolx) <= y toly + (1 # toly).
-
-Definition Rfun_lt (x y : Rfun) : Prop :=
-  exists tolx toly, x tolx + (1 # tolx) < y toly - (1 # toly).
-
-Theorem Rfun_le_not_lt : forall x y, Rfun_le x y <-> ~ Rfun_lt y x.
-  intros x y.
-  split.
-  - intros H1 [tx [ty H2]].
-    specialize (H1 ty tx).
-    contradict H2.
-    apply Qle_not_lt, H1.
-  - intros H tx ty.
-    apply Qnot_lt_le.
-    contradict H.
-    exists ty, tx.
-    apply H.
-Qed.
-
-Definition is_valid_Rfun (f : Rfun) : Prop :=
-  Rfun_le f f.
+Definition is_valid_Rfun (x : Rfun) : Prop :=
+  forall t1 t2, x t1 - (1 # t1) <= x t2 + (1 # t2).
 
 Definition R : Set :=
-  {f | is_valid_Rfun f}.
+  {x | is_valid_Rfun x}.
 
 Definition RQapprox (x : R) (tolerance : positive) : Q :=
   match x with
@@ -53,7 +33,7 @@ Definition Q2R (x : Q) : R :=
   exist is_valid_Rfun (fun t => x) (Q2Rfun_valid x).
 
 Definition Rle (x y : R) : Prop :=
-  Rfun_le (RQapprox x) (RQapprox y).
+  forall tx ty, RQapprox x tx - (1 # tx) <= RQapprox y ty + (1 # ty).
 
 Definition Rge (x y : R) : Prop :=
   Rle y x.
@@ -62,13 +42,27 @@ Definition Req (x y : R) : Prop :=
   Rle x y /\ Rle y x.
 
 Definition Rlt (x y : R) : Prop :=
-  Rfun_lt (RQapprox x) (RQapprox y).
+  exists tx ty, RQapprox x tx + (1 # tx) < RQapprox y ty - (1 # ty).
 
 Definition Rgt (x y : R) : Prop :=
   Rlt y x.
 
 Definition Rneq (x y : R) : Prop :=
   Rlt x y \/ Rlt y x.
+
+Theorem Rle_not_lt : forall x y, Rle x y <-> ~ Rlt y x.
+  intros x y.
+  split.
+  - intros H1 [tx [ty H2]].
+    specialize (H1 ty tx).
+    contradict H2.
+    apply Qle_not_lt, H1.
+  - intros H tx ty.
+    apply Qnot_lt_le.
+    contradict H.
+    exists ty, tx.
+    apply H.
+Qed.
 
 Definition Qsmaller (x : Q) : positive :=
   2 * Qden x.

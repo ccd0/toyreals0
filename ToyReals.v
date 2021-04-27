@@ -36,6 +36,11 @@ Definition is_valid_Rfun (f : Rfun) : Prop :=
 Definition R : Set :=
   {f | is_valid_Rfun f}.
 
+Definition RQapprox (x : R) (tolerance : positive) : Q :=
+  match x with
+  | exist _ f _ => f
+  end tolerance.
+
 Theorem Q2Rfun_valid : forall x, is_valid_Rfun (Q2Rfun x).
   intros x tol1 tol2.
   apply Qplus_le_r.
@@ -46,7 +51,7 @@ Definition Q2R (x : Q) : R :=
   exist is_valid_Rfun (Q2Rfun x) (Q2Rfun_valid x).
 
 Definition Rle (x y : R) : Prop :=
-  Rfun_le (proj1_sig x) (proj1_sig y).
+  Rfun_le (RQapprox x) (RQapprox y).
 
 Definition Rge (x y : R) : Prop :=
   Rle y x.
@@ -55,7 +60,7 @@ Definition Req (x y : R) : Prop :=
   Rle x y /\ Rle y x.
 
 Definition Rlt (x y : R) : Prop :=
-  Rfun_lt (proj1_sig x) (proj1_sig y).
+  Rfun_lt (RQapprox x) (RQapprox y).
 
 Definition Rgt (x y : R) : Prop :=
   Rlt y x.
@@ -80,7 +85,7 @@ Theorem Q2R_lt : forall x y, x < y -> Rlt (Q2R x) (Q2R y).
   intros x y H.
   pose (Qsmaller ((y - x) / 2)) as t.
   exists t, t.
-  unfold Q2R, Q2Rfun, proj1_sig.
+  unfold Q2R, RQapprox, Q2Rfun.
   apply (Qplus_lt_l _ _ ((1 # t) - x)).
   apply (Qmult_lt_r _ _ (1 # 2)); [reflexivity|].
   ring_simplify.
@@ -102,9 +107,6 @@ Theorem Q2R_neq : forall x y, ~ x == y -> Rneq (Q2R x) (Q2R y).
     apply Q2R_lt, H2.
   - tauto.
 Defined.
-
-Definition RQapprox (x : R) (tolerance : positive) : Q :=
-  proj1_sig x tolerance.
 
 Theorem RQapprox_spec_l :
   forall x t, Rle (Q2R (RQapprox x t - (1 # t))) x.

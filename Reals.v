@@ -10,10 +10,10 @@ Definition is_valid_Rfun (x : Rfun) : Prop :=
 Inductive R : Set :=
   | Rmake (x : Rfun) (p : is_valid_Rfun x) : R.
 
-Definition RQapprox (x : R) (tolerance : positive) : Q :=
+Definition RQapprox (x : R) (target_accuracy : positive) : Q :=
   match x with
   | Rmake f _ => f
-  end tolerance.
+  end target_accuracy.
 
 Definition R_lower_bound (x : R) (t : positive) : Q :=
   RQapprox x t - (1 # t).
@@ -29,7 +29,7 @@ Proof.
 Qed.
 
 Theorem Q2Rfun_valid : forall x, is_valid_Rfun (fun t => x).
-  intros x tol1 tol2.
+  intros x t1 t2.
   apply Qplus_le_r.
   discriminate.
 Qed.
@@ -145,4 +145,4 @@ Definition RQapprox_w_den (x : R) (den : positive) : Q :=
   Qfloor (RQapprox x (2 * den) * (Zpos den # 1) + (1 # 2)) # den.
 
 Definition Rfun_plus (x y : Rfun) : Rfun :=
-  fun tol => Qred (x (2 * tol)%positive + y (2 * tol)%positive).
+  fun t => Qred (x (2 * t)%positive + y (2 * t)%positive).

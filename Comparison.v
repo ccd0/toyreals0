@@ -4,10 +4,10 @@ Require Import Coq.QArith.Qround.
 Require Import Coq.Logic.ConstructiveEpsilon.
 
 Definition is_Rlt_witness (x y : R) (t : Q * Q) : Prop :=
-  R_upper_bound x (fst t) < R_lower_bound y (snd t).
+  R.upper_bound x (fst t) < R.lower_bound y (snd t).
 
 Lemma is_Rlt_witness_spec :
-  forall x y t, is_Rlt_witness x y t -> Rlt x y.
+  forall x y t, is_Rlt_witness x y t -> R.lt x y.
 Proof.
   intros x y [tx ty] H.
   exists tx, ty.
@@ -15,7 +15,7 @@ Proof.
 Defined.
 
 Definition is_Rlt_witness_bool (x y : R) (t : Q * Q) : bool :=
-  negb (Qle_bool (R_lower_bound y (snd t)) (R_upper_bound x (fst t))).
+  negb (Qle_bool (R.lower_bound y (snd t)) (R.upper_bound x (fst t))).
 
 Lemma is_Rlt_witness_bool_spec :
   forall x y t, is_Rlt_witness_bool x y t = true <-> is_Rlt_witness x y t.
@@ -32,7 +32,7 @@ Qed.
 Definition wsame (t : Q) : Q * Q := (t, t).
 
 Definition Rlt_witness_make_same (x y : R) (t : Q * Q) : Q :=
-  8 / (R_lower_bound y (snd t) - R_upper_bound x (fst t)).
+  8 / (R.lower_bound y (snd t) - R.upper_bound x (fst t)).
 
 Lemma Rlt_witness_make_same_spec :
   forall x y t,
@@ -42,27 +42,27 @@ Lemma Rlt_witness_make_same_spec :
 Proof.
   intros x y [tx ty] H t Ht.
   unfold is_Rlt_witness.
-  setoid_replace (R_upper_bound x t)
-    with (R_lower_bound x t + 2 * RE.error (R.compute x t))
-    by (unfold R_upper_bound, R_lower_bound, RE.min, RE.max; ring).
-  setoid_replace (R_lower_bound y t)
-    with (R_upper_bound y t - 2 * RE.error (R.compute y t))
-    by (unfold R_upper_bound, R_lower_bound, RE.min, RE.max; ring).
-  apply (Qle_lt_trans _ (R_upper_bound x tx + 2 * RE.error (R.compute x t)));
+  setoid_replace (R.upper_bound x t)
+    with (R.lower_bound x t + 2 * RE.error (R.compute x t))
+    by (unfold R.upper_bound, R.lower_bound, RE.min, RE.max; ring).
+  setoid_replace (R.lower_bound y t)
+    with (R.upper_bound y t - 2 * RE.error (R.compute y t))
+    by (unfold R.upper_bound, R.lower_bound, RE.min, RE.max; ring).
+  apply (Qle_lt_trans _ (R.upper_bound x tx + 2 * RE.error (R.compute x t)));
     [apply Qplus_le_l, R.compute_consistent|].
-  apply (Qlt_le_trans _ (R_lower_bound y ty - 2 * RE.error (R.compute y t)));
+  apply (Qlt_le_trans _ (R.lower_bound y ty - 2 * RE.error (R.compute y t)));
     [|apply Qplus_le_l, R.compute_consistent].
-  apply (Qplus_lt_l _ _ (2 * RE.error (R.compute y t) - R_upper_bound x tx)).
+  apply (Qplus_lt_l _ _ (2 * RE.error (R.compute y t) - R.upper_bound x tx)).
   apply (Qmult_lt_l _ _ (1 # 2)); [reflexivity|].
   ring_simplify.
-  setoid_replace ((-1 # 2) * R_upper_bound x tx + (1 # 2) * R_lower_bound y ty)
-    with ((R_lower_bound y ty - R_upper_bound x tx) / 2) by field.
+  setoid_replace ((-1 # 2) * R.upper_bound x tx + (1 # 2) * R.lower_bound y ty)
+    with ((R.lower_bound y ty - R.upper_bound x tx) / 2) by field.
   unfold Rlt_witness_make_same in Ht.
   cbn in Ht.
-  set (z := R_lower_bound y ty - R_upper_bound x tx) in *.
+  set (z := R.lower_bound y ty - R.upper_bound x tx) in *.
   assert (z > 0) as Hz.
   - subst z.
-    setoid_rewrite <- (Qplus_opp_r (R_upper_bound x tx)).
+    setoid_rewrite <- (Qplus_opp_r (R.upper_bound x tx)).
     apply Qplus_lt_l.
     apply H.
   - apply (Qmult_lt_l _ _ t).
@@ -87,14 +87,14 @@ Definition is_Rneq_witness (x y : R) (t : Q * Q) : Prop :=
   is_Rlt_witness x y t \/ is_Rlt_witness y x t.
 
 Lemma is_Rneq_witness_spec :
-  forall x y t, is_Rneq_witness x y t -> Rneq x y.
+  forall x y t, is_Rneq_witness x y t -> R.neq x y.
 Proof.
   intros x y t [H|H]; [left|right];
     apply (is_Rlt_witness_spec _ _ t H).
 Defined.
 
 Lemma Rneq_witness_exists :
-  forall x y, Rneq x y -> exists t, is_Rneq_witness x y t.
+  forall x y, R.neq x y -> exists t, is_Rneq_witness x y t.
 Proof.
   intros x y p.
   destruct p as [p|p];
@@ -182,7 +182,7 @@ Definition is_Rneq_witness_pow2 (x y : R) (n : nat) : bool :=
   is_Rneq_witness_bool x y (wsame (wpow2 n)).
 
 Lemma Rneq_witness_pow2_exists :
-  forall x y, Rneq x y -> exists n, is_Rneq_witness_pow2 x y n = true.
+  forall x y, R.neq x y -> exists n, is_Rneq_witness_pow2 x y n = true.
 Proof.
   intros x y p.
   apply Rneq_witness_exists in p.
@@ -194,7 +194,7 @@ Proof.
   apply wlog2_spec.
 Defined.
 
-Definition get_Rneq_witness (x y : R) (p : Rneq x y) : Q * Q :=
+Definition get_Rneq_witness (x y : R) (p : R.neq x y) : Q * Q :=
   wsame (wpow2 (
     constructive_ground_epsilon_nat
       (fun n => is_Rneq_witness_pow2 x y n = true)
@@ -211,11 +211,11 @@ Proof.
   apply constructive_ground_epsilon_spec_nat.
 Defined.
 
-Definition Rlt_bool (x y : R) (p : Rneq x y) : bool :=
+Definition Rlt_bool (x y : R) (p : R.neq x y) : bool :=
   is_Rlt_witness_bool x y (get_Rneq_witness x y p).
 
 Theorem Rlt_bool_spec :
-  forall x y p, if Rlt_bool x y p then Rlt x y else Rlt y x.
+  forall x y p, if Rlt_bool x y p then R.lt x y else R.lt y x.
 Proof.
   intros x y p.
   unfold Rlt_bool.

@@ -33,20 +33,16 @@ Module R.
     compute_meets_target : RE.meets_target compute;
   }.
 
-End R.
-Export R (R).
+  Definition Qapprox (x : R) (target_accuracy : Q) : Q :=
+    RE.value (compute x target_accuracy).
 
-Definition RQapprox (x : R) (target_accuracy : Q) : Q :=
-  RE.value (R.compute x target_accuracy).
+  Definition lower_bound (x : R) (t : Q) : Q :=
+    RE.min (compute x t).
 
-Definition R_lower_bound (x : R) (t : Q) : Q :=
-  RE.min (R.compute x t).
+  Definition upper_bound (x : R) (t : Q) : Q :=
+    RE.max (compute x t).
 
-Definition R_upper_bound (x : R) (t : Q) : Q :=
-  RE.max (R.compute x t).
-
-Module Q2R.
-  Section params.
+  Module ofQ. Section params.
 
     Variable x : Q.
 
@@ -65,89 +61,86 @@ Module Q2R.
       discriminate.
     Qed.
 
-    Definition Q2R : R :=
-      R.make compute consistent meets_target.
+    Definition ofQ : R :=
+      make compute consistent meets_target.
 
-  End params.
-End Q2R.
-Export Q2R (Q2R).
+  End params. End ofQ. Export ofQ (ofQ).
 
-Definition Rle (x y : R) : Prop :=
-  forall tx ty, R_lower_bound x tx <= R_upper_bound y ty.
+  Definition le (x y : R) : Prop :=
+    forall tx ty, lower_bound x tx <= upper_bound y ty.
 
-Definition Rge (x y : R) : Prop :=
-  Rle y x.
+  Definition ge (x y : R) : Prop :=
+    le y x.
 
-Definition Req (x y : R) : Prop :=
-  Rle x y /\ Rle y x.
+  Definition eq (x y : R) : Prop :=
+    le x y /\ le y x.
 
-Definition Rlt (x y : R) : Prop :=
-  exists tx ty, R_upper_bound x tx < R_lower_bound y ty.
+  Definition lt (x y : R) : Prop :=
+    exists tx ty, upper_bound x tx < lower_bound y ty.
 
-Definition Rgt (x y : R) : Prop :=
-  Rlt y x.
+  Definition gt (x y : R) : Prop :=
+    lt y x.
 
-Definition Rneq (x y : R) : Prop :=
-  Rlt x y \/ Rlt y x.
+  Definition neq (x y : R) : Prop :=
+    lt x y \/ lt y x.
 
-Theorem Rle_not_lt : forall x y, Rle x y <-> ~ Rlt y x.
-  intros x y.
-  split.
-  - intros H1 [tx [ty H2]].
-    specialize (H1 ty tx).
-    contradict H2.
-    apply Qle_not_lt, H1.
-  - intros H tx ty.
-    apply Qnot_lt_le.
-    contradict H.
-    exists ty, tx.
-    apply H.
-Qed.
+  Theorem le_not_lt : forall x y, le x y <-> ~ lt y x.
+    intros x y.
+    split.
+    - intros H1 [tx [ty H2]].
+      specialize (H1 ty tx).
+      contradict H2.
+      apply Qle_not_lt, H1.
+    - intros H tx ty.
+      apply Qnot_lt_le.
+      contradict H.
+      exists ty, tx.
+      apply H.
+  Qed.
 
-Theorem Q2R_lt : forall x y, x < y -> Rlt (Q2R x) (Q2R y).
-  intros x y H.
-  exists 0, 0.
-  apply Qplus_lt_l, H.
-Defined.
+  Theorem ofQ_lt : forall x y, x < y -> lt (ofQ x) (ofQ y).
+    intros x y H.
+    exists 0, 0.
+    apply Qplus_lt_l, H.
+  Defined.
 
-Theorem Q2R_neq : forall x y, ~ x == y -> Rneq (Q2R x) (Q2R y).
-  intros x y H.
-  destruct (Q_dec x y) as [[H2|H2]|H2].
-  - left.
-    apply Q2R_lt, H2.
-  - right.
-    apply Q2R_lt, H2.
-  - tauto.
-Defined.
+  Theorem ofQ_neq : forall x y, ~ x == y -> neq (ofQ x) (ofQ y).
+    intros x y H.
+    destruct (Q_dec x y) as [[H2|H2]|H2].
+    - left.
+      apply ofQ_lt, H2.
+    - right.
+      apply ofQ_lt, H2.
+    - tauto.
+  Defined.
 
-Theorem R_lower_bound_spec :
-  forall x t, Rle (Q2R (R_lower_bound x t)) x.
-Proof.
-  intros x t t1 t2.
-  apply (Qle_trans _ (R_lower_bound x t)).
-  - unfold R_lower_bound, RE.min; cbn.
-    setoid_rewrite Qplus_0_r.
-    apply Qle_refl.
-  - apply R.compute_consistent.
-Qed.
+  Theorem lower_bound_spec :
+    forall x t, le (ofQ (lower_bound x t)) x.
+  Proof.
+    intros x t t1 t2.
+    apply (Qle_trans _ (lower_bound x t)).
+    - unfold lower_bound, RE.min; cbn.
+      setoid_rewrite Qplus_0_r.
+      apply Qle_refl.
+    - apply compute_consistent.
+  Qed.
 
-Theorem R_upper_bound_spec :
-  forall x t, Rle x (Q2R (R_upper_bound x t)).
-Proof.
-  intros x t t1 t2.
-  apply (Qle_trans _ (R_upper_bound x t)).
-  - apply R.compute_consistent.
-  - unfold R_upper_bound, RE.max; cbn.
-    setoid_rewrite Qplus_0_r.
-    apply Qle_refl.
-Qed.
+  Theorem upper_bound_spec :
+    forall x t, le x (ofQ (upper_bound x t)).
+  Proof.
+    intros x t t1 t2.
+    apply (Qle_trans _ (upper_bound x t)).
+    - apply compute_consistent.
+    - unfold upper_bound, RE.max; cbn.
+      setoid_rewrite Qplus_0_r.
+      apply Qle_refl.
+  Qed.
 
-Definition RQapprox_w_den (x : R) (den : positive) : Q :=
-  let den' := Z.pos den # 1 in
-    Qfloor (RQapprox x (2 * den') * den' + (1 # 2)) # den.
+  Definition Qapprox_w_den (x : R) (den : positive) : Q :=
+    let den' := Z.pos den # 1 in
+      Qfloor (Qapprox x (2 * den') * den' + (1 # 2)) # den.
 
-Module Rplus.
-  Section params.
+  Module plus. Section params.
 
     Variables x y : R.
 
@@ -158,5 +151,6 @@ Module Rplus.
             (Qred (RE.value x' + RE.value y'))
             (Qred (RE.error x' + RE.error y')).
 
-  End params.
-End Rplus.
+  End params. End plus.
+
+End R. Export R (R).

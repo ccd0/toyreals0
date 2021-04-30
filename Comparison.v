@@ -49,9 +49,9 @@ Proof.
     with (R_upper_bound y t - 2 * RE.error (R.compute y t))
     by (unfold R_upper_bound, R_lower_bound, RE.min, RE.max; ring).
   apply (Qle_lt_trans _ (R_upper_bound x tx + 2 * RE.error (R.compute x t)));
-    [apply Qplus_le_l, RQapprox_spec|].
+    [apply Qplus_le_l, R.compute_consistent|].
   apply (Qlt_le_trans _ (R_lower_bound y ty - 2 * RE.error (R.compute y t)));
-    [|apply Qplus_le_l, RQapprox_spec].
+    [|apply Qplus_le_l, R.compute_consistent].
   apply (Qplus_lt_l _ _ (2 * RE.error (R.compute y t) - R_upper_bound x tx)).
   apply (Qmult_lt_l _ _ (1 # 2)); [reflexivity|].
   ring_simplify.

@@ -45,13 +45,6 @@ Definition R_lower_bound (x : R) (t : Q) : Q :=
 Definition R_upper_bound (x : R) (t : Q) : Q :=
   RE.max (R.compute x t).
 
-Theorem RQapprox_spec :
-  forall x t1 t2, R_lower_bound x t1 <= R_upper_bound x t2.
-Proof.
-  intros [x H].
-  apply H.
-Qed.
-
 Module Q2R.
   Section params.
 
@@ -135,7 +128,7 @@ Proof.
   - unfold R_lower_bound, RE.min; cbn.
     setoid_rewrite Qplus_0_r.
     apply Qle_refl.
-  - apply RQapprox_spec.
+  - apply R.compute_consistent.
 Qed.
 
 Theorem R_upper_bound_spec :
@@ -143,7 +136,7 @@ Theorem R_upper_bound_spec :
 Proof.
   intros x t t1 t2.
   apply (Qle_trans _ (R_upper_bound x t)).
-  - apply RQapprox_spec.
+  - apply R.compute_consistent.
   - unfold R_upper_bound, RE.max; cbn.
     setoid_rewrite Qplus_0_r.
     apply Qle_refl.

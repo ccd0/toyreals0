@@ -1,8 +1,9 @@
 Require Import ToyReals.Reals.
 Require Import Coq.QArith.QArith.
+Require Import Coq.QArith.Qround.
 Require Import Coq.Logic.ConstructiveEpsilon.
 
-Definition is_Rlt_witness (x y : R) (t : positive * positive) : Prop :=
+Definition is_Rlt_witness (x y : R) (t : Q * Q) : Prop :=
   R_upper_bound x (fst t) < R_lower_bound y (snd t).
 
 Lemma is_Rlt_witness_spec :
@@ -13,7 +14,7 @@ Proof.
   exact H.
 Defined.
 
-Definition is_Rlt_witness_bool (x y : R) (t : positive * positive) : bool :=
+Definition is_Rlt_witness_bool (x y : R) (t : Q * Q) : bool :=
   negb (Qle_bool (R_lower_bound y (snd t)) (R_upper_bound x (fst t))).
 
 Lemma is_Rlt_witness_bool_spec :
@@ -28,48 +29,61 @@ Proof.
   split; [apply Qnot_le_lt|apply Qlt_not_le].
 Qed.
 
-Definition wsame (t : positive) : positive * positive := (t, t).
+Definition wsame (t : Q) : Q * Q := (t, t).
 
-Definition Rlt_witness_make_same (x y : R) (t : positive * positive) : positive :=
-  Qsmaller ((R_lower_bound y (snd t) - R_upper_bound x (fst t)) / 4).
+Definition Rlt_witness_make_same (x y : R) (t : Q * Q) : Q :=
+  8 / (R_lower_bound y (snd t) - R_upper_bound x (fst t)).
 
 Lemma Rlt_witness_make_same_spec :
   forall x y t,
     is_Rlt_witness x y t ->
-      forall t2, (Rlt_witness_make_same x y t <= t2)%positive ->
+      forall t2, Rlt_witness_make_same x y t <= t2 ->
         is_Rlt_witness x y (wsame t2).
 Proof.
   intros x y [tx ty] H t Ht.
   unfold is_Rlt_witness.
   setoid_replace (R_upper_bound x t)
-    with (R_lower_bound x t + 2 * (1 # t))
-    by (unfold R_upper_bound, R_lower_bound; ring).
+    with (R_lower_bound x t + 2 * RE.error (R.compute x t))
+    by (unfold R_upper_bound, R_lower_bound, RE.min, RE.max; ring).
   setoid_replace (R_lower_bound y t)
-    with (R_upper_bound y t - 2 * (1 # t))
-    by (unfold R_upper_bound, R_lower_bound; ring).
-  apply (Qle_lt_trans _ (R_upper_bound x tx + 2 * (1 # t)));
+    with (R_upper_bound y t - 2 * RE.error (R.compute y t))
+    by (unfold R_upper_bound, R_lower_bound, RE.min, RE.max; ring).
+  apply (Qle_lt_trans _ (R_upper_bound x tx + 2 * RE.error (R.compute x t)));
     [apply Qplus_le_l, RQapprox_spec|].
-  apply (Qlt_le_trans _ (R_lower_bound y ty - 2 * (1 # t)));
+  apply (Qlt_le_trans _ (R_lower_bound y ty - 2 * RE.error (R.compute y t)));
     [|apply Qplus_le_l, RQapprox_spec].
-  apply (Qplus_lt_l _ _ (2 * (1 # t) - R_upper_bound x tx)).
-  apply (Qmult_lt_l _ _ (1 # 4)); [reflexivity|].
+  apply (Qplus_lt_l _ _ (2 * RE.error (R.compute y t) - R_upper_bound x tx)).
+  apply (Qmult_lt_l _ _ (1 # 2)); [reflexivity|].
   ring_simplify.
-  setoid_replace ((-1 # 4) * R_upper_bound x tx + (1 # 4) * R_lower_bound y ty)
-    with ((R_lower_bound y ty - R_upper_bound x tx) / 4) by field.
+  setoid_replace ((-1 # 2) * R_upper_bound x tx + (1 # 2) * R_lower_bound y ty)
+    with ((R_lower_bound y ty - R_upper_bound x tx) / 2) by field.
   unfold Rlt_witness_make_same in Ht.
-  set (z := (R_lower_bound y ty - R_upper_bound x tx) / 4) in *.
-  apply (Qle_lt_trans _ (1 # (Qsmaller z)));
-    [apply Pos2Z.pos_le_pos, Ht|].
-  apply Qsmaller_spec.
-  subst z.
-  setoid_replace 0 with (0 / 4) by reflexivity.
-  apply Qmult_lt_r; [reflexivity|].
-  setoid_rewrite <- (Qplus_opp_r (R_upper_bound x tx)).
-  apply Qplus_lt_l.
-  apply H.
+  cbn in Ht.
+  set (z := R_lower_bound y ty - R_upper_bound x tx) in *.
+  assert (z > 0) as Hz.
+  - subst z.
+    setoid_rewrite <- (Qplus_opp_r (R_upper_bound x tx)).
+    apply Qplus_lt_l.
+    apply H.
+  - apply (Qmult_lt_l _ _ t).
+    + apply (Qlt_le_trans _ (8 / z)); trivial.
+      apply Qlt_shift_div_l; trivial.
+      reflexivity.
+    + ring_simplify.
+      apply (Qle_lt_trans _ (1 + t * RE.error (R.compute y t)));
+        [apply Qplus_le_l, R.compute_meets_target|].
+      apply (Qle_lt_trans _ (1 + 1));
+        [apply Qplus_le_r, R.compute_meets_target|].
+      apply (Qmult_le_r _ _ (z / 2)) in Ht;
+        [|rewrite <- (Qmult_0_l (/ 2)); apply Qmult_lt_r; trivial; reflexivity].
+      apply (Qlt_le_trans _ (8 / z * (z / 2))), Ht.
+      field_simplify; try reflexivity.
+      intro Hz2.
+      rewrite Hz2 in Hz.
+      discriminate.
 Qed.
 
-Definition is_Rneq_witness (x y : R) (t : positive * positive) : Prop :=
+Definition is_Rneq_witness (x y : R) (t : Q * Q) : Prop :=
   is_Rlt_witness x y t \/ is_Rlt_witness y x t.
 
 Lemma is_Rneq_witness_spec :
@@ -90,7 +104,7 @@ Proof.
     exact p.
 Defined.
 
-Definition is_Rneq_witness_bool (x y : R) (t : positive * positive) : bool :=
+Definition is_Rneq_witness_bool (x y : R) (t : Q * Q) : bool :=
   is_Rlt_witness_bool x y t || is_Rlt_witness_bool y x t.
 
 Lemma is_Rneq_witness_bool_spec :
@@ -115,7 +129,7 @@ Proof.
   discriminate.
 Qed.
 
-Definition Rneq_witness_make_same (x y : R) (t : positive * positive) : positive :=
+Definition Rneq_witness_make_same (x y : R) (t : Q * Q) : Q :=
   if is_Rlt_witness_bool x y t then
     Rlt_witness_make_same x y t
   else
@@ -124,7 +138,7 @@ Definition Rneq_witness_make_same (x y : R) (t : positive * positive) : positive
 Lemma Rneq_witness_make_same_spec :
   forall x y t,
     is_Rneq_witness x y t ->
-      forall t2, (Rneq_witness_make_same x y t <= t2)%positive ->
+      forall t2, Rneq_witness_make_same x y t <= t2 ->
         is_Rneq_witness x y (wsame t2).
 Proof.
   intros x y t Ht t2 Ht2.
@@ -138,21 +152,30 @@ Proof.
     apply Rneq_witness_not_lt_gt; trivial.
 Qed.
 
-Definition wlog2 (t : positive) : nat :=
-  Nat.log2_up (Pos.to_nat t).
+Definition wlog2 (t : Q) : nat :=
+  Nat.log2_up (Z.to_nat (Z.max 2 (Qceiling t))).
 
-Definition wpow2 (n : nat) :=
-  Pos.of_nat (2 ^ n).
+Definition wpow2 (n : nat) : Q :=
+  inject_Z (Z.of_nat (2 ^ n)).
 
 Lemma wlog2_spec :
-  forall t, (t <= wpow2 (wlog2 t))%positive.
+  forall t, t <= wpow2 (wlog2 t).
 Proof.
   intro t.
   unfold wpow2, wlog2.
-  apply Pos2Nat.inj_le.
-  rewrite Nat2Pos.id by (apply Nat.pow_nonzero; discriminate).
-  apply Nat.log2_log2_up_spec.
-  apply Pos2Nat.is_pos.
+  apply (Qle_trans _ (inject_Z (Qceiling t))); [apply Qle_ceiling|].
+  rewrite <- Zle_Qle.
+  apply (Z.le_trans _ (Z.max 2 (Qceiling t))); [apply Z.le_max_r|].
+  assert (0 <= Z.max 2 (Qceiling t))%Z as H
+    by (apply (Z.le_trans _ (Z.max 0 (Qceiling t)));
+      [apply Z.le_max_l|apply Z.max_le_compat_r; discriminate]).
+  rewrite <- (Z2Nat.id (Z.max 2 (Qceiling t))) at 1 by apply H.
+  apply inj_le.
+  apply Nat.log2_up_spec.
+  apply (lt_le_trans _ 2); auto.
+  change (Z.to_nat 2 <= Z.to_nat (Z.max 2 (Qceiling t)))%nat.
+  apply Z2Nat.inj_le; trivial; try discriminate.
+  apply Z.le_max_l.
 Qed.
 
 Definition is_Rneq_witness_pow2 (x y : R) (n : nat) : bool :=
@@ -171,7 +194,7 @@ Proof.
   apply wlog2_spec.
 Defined.
 
-Definition get_Rneq_witness (x y : R) (p : Rneq x y) : positive * positive :=
+Definition get_Rneq_witness (x y : R) (p : Rneq x y) : Q * Q :=
   wsame (wpow2 (
     constructive_ground_epsilon_nat
       (fun n => is_Rneq_witness_pow2 x y n = true)

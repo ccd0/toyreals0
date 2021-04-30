@@ -1,25 +1,49 @@
 Require Import Coq.QArith.QArith.
 Require Import Coq.QArith.Qround.
 
-Definition Rfun : Set :=
-  positive -> Q.
+Module RE.
 
-Definition is_valid_Rfun (x : Rfun) : Prop :=
-  forall t1 t2, x t1 - (1 # t1) <= x t2 + (1 # t2).
+  Record estimate : Set := make {
+    value : Q;
+    error : Q;
+  }.
 
-Inductive R : Set :=
-  | Rmake (x : Rfun) (p : is_valid_Rfun x) : R.
+  Definition min (x : estimate) : Q :=
+    value x - error x.
 
-Definition RQapprox (x : R) (target_accuracy : positive) : Q :=
-  match x with
-  | Rmake f _ => f
-  end target_accuracy.
+  Definition max (x : estimate) : Q :=
+    value x + error x.
 
-Definition R_lower_bound (x : R) (t : positive) : Q :=
-  RQapprox x t - (1 # t).
+  Definition estimator : Set :=
+    Q -> estimate.
 
-Definition R_upper_bound (x : R) (t : positive) : Q :=
-  RQapprox x t + (1 # t).
+  Definition consistent (f : estimator) : Prop :=
+    forall t1 t2, min (f t1) <= max (f t2).
+
+  Definition meets_target (f : estimator) : Prop :=
+    forall target_accuracy, target_accuracy * error (f target_accuracy) <= 1.
+
+End RE.
+
+Module R.
+
+  Record R : Set := make {
+    compute : RE.estimator;
+    compute_consistent : RE.consistent compute;
+    compute_meets_target : RE.meets_target compute;
+  }.
+
+End R.
+Export R (R).
+
+Definition RQapprox (x : R) (target_accuracy : Q) : Q :=
+  RE.value (R.compute x target_accuracy).
+
+Definition R_lower_bound (x : R) (t : Q) : Q :=
+  RE.min (R.compute x t).
+
+Definition R_upper_bound (x : R) (t : Q) : Q :=
+  RE.max (R.compute x t).
 
 Theorem RQapprox_spec :
   forall x t1 t2, R_lower_bound x t1 <= R_upper_bound x t2.
@@ -28,14 +52,32 @@ Proof.
   apply H.
 Qed.
 
-Theorem Q2Rfun_valid : forall x, is_valid_Rfun (fun t => x).
-  intros x t1 t2.
-  apply Qplus_le_r.
-  discriminate.
-Qed.
+Module Q2R.
+  Section params.
 
-Definition Q2R (x : Q) : R :=
-  Rmake (fun t => x) (Q2Rfun_valid x).
+    Variable x : Q.
+
+    Definition compute (t : Q) : RE.estimate :=
+      RE.make x 0.
+
+    Theorem consistent : RE.consistent compute.
+      intros t1 t2.
+      apply Qplus_le_r.
+      discriminate.
+    Qed.
+
+    Theorem meets_target : RE.meets_target compute.
+      intros t.
+      rewrite Qmult_0_r.
+      discriminate.
+    Qed.
+
+    Definition Q2R : R :=
+      R.make compute consistent meets_target.
+
+  End params.
+End Q2R.
+Export Q2R (Q2R).
 
 Definition Rle (x y : R) : Prop :=
   forall tx ty, R_lower_bound x tx <= R_upper_bound y ty.
@@ -92,20 +134,8 @@ Qed.
 
 Theorem Q2R_lt : forall x y, x < y -> Rlt (Q2R x) (Q2R y).
   intros x y H.
-  pose (Qsmaller ((y - x) / 2)) as t.
-  exists t, t.
-  unfold R_upper_bound, R_lower_bound.
-  cbn - [t].
-  apply (Qplus_lt_l _ _ ((1 # t) - x)).
-  apply (Qmult_lt_r _ _ (1 # 2)); [reflexivity|].
-  ring_simplify.
-  setoid_replace ((-1 # 2) * x + (1 # 2) * y) with ((y - x) / 2) by field.
-  apply Qsmaller_spec.
-  rewrite <- (Qmult_0_l (/ 2)).
-  apply Qmult_lt_r; [reflexivity|].
-  apply (Qplus_lt_l _ _ x).
-  ring_simplify.
-  trivial.
+  exists 0, 0.
+  apply Qplus_lt_l, H.
 Defined.
 
 Theorem Q2R_neq : forall x y, ~ x == y -> Rneq (Q2R x) (Q2R y).
@@ -123,10 +153,9 @@ Theorem R_lower_bound_spec :
 Proof.
   intros x t t1 t2.
   apply (Qle_trans _ (R_lower_bound x t)).
-  - unfold R_lower_bound.
-    rewrite <- (Qplus_0_r (RQapprox x t - (1 # t))) at 2.
-    apply Qplus_le_r.
-    discriminate.
+  - unfold R_lower_bound, RE.min; cbn.
+    setoid_rewrite Qplus_0_r.
+    apply Qle_refl.
   - apply RQapprox_spec.
 Qed.
 
@@ -136,13 +165,26 @@ Proof.
   intros x t t1 t2.
   apply (Qle_trans _ (R_upper_bound x t)).
   - apply RQapprox_spec.
-  - rewrite <- (Qplus_0_r (RQapprox x t + (1 # t))) at 1.
-    apply Qplus_le_r.
-    discriminate.
+  - unfold R_upper_bound, RE.max; cbn.
+    setoid_rewrite Qplus_0_r.
+    apply Qle_refl.
 Qed.
 
 Definition RQapprox_w_den (x : R) (den : positive) : Q :=
-  Qfloor (RQapprox x (2 * den) * (Zpos den # 1) + (1 # 2)) # den.
+  let den' := Z.pos den # 1 in
+    Qfloor (RQapprox x (2 * den') * den' + (1 # 2)) # den.
 
-Definition Rfun_plus (x y : Rfun) : Rfun :=
-  fun t => Qred (x (2 * t)%positive + y (2 * t)%positive).
+Module Rplus.
+  Section params.
+
+    Variables x y : R.
+
+    Definition compute (t : Q) :=
+      let x' := R.compute x (2 * t) in
+        let y' := R.compute y (2 * t) in
+          RE.make
+            (Qred (RE.value x' + RE.value y'))
+            (Qred (RE.error x' + RE.error y')).
+
+  End params.
+End Rplus.

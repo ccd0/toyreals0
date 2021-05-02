@@ -37,6 +37,9 @@ Module RE.
   Definition overlaps (x1 x2 : estimate) : Prop :=
     Qmax (min x1) (min x2) <= Qmin (max x1) (max x2).
 
+  Definition within (x : Q) (xs : estimate) : Prop :=
+    min xs <= x <= max xs.
+
   Lemma average_between :
     forall x y, x <= y -> x <= (x + y) / 2 <= y.
   Proof.
@@ -227,6 +230,20 @@ Module R.
     Definition plus2 (x y : R) (t : Q) : RE.estimate :=
       plus1 (R.compute x (2 * t)) (R.compute y (2 * t)).
 
+    Lemma errors_correct :
+      forall x xrange y yrange,
+        RE.within x xrange ->  RE.within y yrange ->
+          RE.within (Qred (x + y)) (plus1 xrange yrange).
+    Proof.
+      intros x [x0 dx] y [y0 dy] Hx Hy.
+      unfold RE.within in *.
+      cbn - [Qred] in *.
+      repeat rewrite Qred_correct.
+      setoid_replace (x0 + y0 - (dx + dy)) with ((x0 - dx) + (y0 - dy)) by ring.
+      setoid_replace (x0 + y0 + (dx + dy)) with ((x0 + dx) + (y0 + dy)) by ring.
+      split; apply Qplus_le_compat; tauto.
+    Qed.
+
     Lemma compatible' :
       Proper (eqv ==> eqv ==> RE.le) plus2.
     Proof.
@@ -236,19 +253,10 @@ Module R.
       set (x := RE.common_point (compute x1 (2 * t1)) (compute x2 (2 * t2))) in *.
       set (y := RE.common_point (compute y1 (2 * t1)) (compute y2 (2 * t2))) in *.
       set (z := plus1 (RE.exact x) (RE.exact y)).
-      apply (Qle_trans _ (RE.value z)).
-      - destruct (compute x1 (2 * t1)) as [x0 dx].
-        destruct (compute y1 (2 * t1)) as [y0 dy].
-        cbn - [Qred] in *.
-        repeat rewrite Qred_correct.
-        setoid_replace (x0 + y0 - (dx + dy)) with ((x0 - dx) + (y0 - dy)) by ring.
-        apply Qplus_le_compat; tauto.
-      - destruct (compute x2 (2 * t2)) as [x0 dx].
-        destruct (compute y2 (2 * t2)) as [y0 dy].
-        cbn - [Qred] in *.
-        repeat rewrite Qred_correct.
-        setoid_replace (x0 + y0 + (dx + dy)) with ((x0 + dx) + (y0 + dy)) by ring.
-        apply Qplus_le_compat; tauto.
+      apply (Qle_trans _ (RE.value z));
+        apply errors_correct;
+        unfold RE.within;
+        tauto.
     Qed.
 
     Theorem consistent : forall x y, RE.consistent (plus2 x y).

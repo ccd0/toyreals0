@@ -157,6 +157,84 @@ Module R.
     apply compute_consistent.
   Defined.
 
+  Lemma eventual_not_both :
+    forall x y z t, x < y -> 2 / (y - x) < t ->
+      y <= upper_bound z t -> x < lower_bound z t.
+  Proof.
+    intros x y z t H1 H2 H3.
+    apply Qnot_le_lt.
+    intro H4.
+    apply (Qplus_lt_l _ _ (-x)) in H1.
+    rewrite Qplus_opp_r in H1.
+    apply Qopp_le_compat in H4.
+    apply (Qplus_le_compat _ _ _ _ H3) in H4.
+    setoid_replace (upper_bound z t + - lower_bound z t)
+      with (2 * RE.error (compute z t)) in H4
+      by (unfold upper_bound, lower_bound, RE.min, RE.max; ring).
+    assert (0 < 2 / (y - x)) as H5
+      by (apply Qlt_shift_div_l; trivial; ring_simplify; reflexivity).
+    assert (0 < t) as H6
+      by (apply (Qlt_trans _ (2 / (y - x))); trivial).
+    contradict H2.
+    apply Qle_not_lt.
+    apply Qle_shift_div_l; trivial.
+    apply (Qle_trans _ (2 * (t * RE.error (compute z t)))).
+    - setoid_replace (2 * (t * RE.error (compute z t)))
+        with (t * (2 * RE.error (compute z t))) by ring.
+      apply Qmult_le_l; trivial.
+    - apply (Qmult_le_l _ 1 2); [reflexivity|].
+      apply compute_meets_target.
+  Qed.
+
+  Lemma Qplus1_gt : forall x, x < x + 1.
+    intro x.
+    rewrite <- (Qplus_0_r x) at 1.
+    apply Qplus_lt_r.
+    reflexivity.
+  Qed.
+
+  Theorem lt_or : forall x y z, lt x y -> lt z y \/ lt x z.
+  Proof.
+    intros x y z [t1 [t2 H]].
+    set (a := upper_bound x t1) in *.
+    set (b := lower_bound y t2) in *.
+    set (t := 2 / (b - a) + 1).
+    destruct (Qlt_le_dec (upper_bound z t) b) as [H2|H2].
+    - left.
+      exists t, t2.
+      trivial.
+    - right.
+      exists t1, t.
+      apply (eventual_not_both a b); trivial.
+      apply Qplus1_gt.
+  Defined.
+
+  Theorem le_trans : forall x y z, le x y -> le y z -> le x z.
+  Proof.
+    intros x y z H1 H2.
+    apply le_not_lt in H1, H2.
+    apply le_not_lt.
+    intro H3.
+    apply (lt_or _ _ y) in H3.
+    tauto.
+  Qed.
+
+  Theorem lt_le_trans : forall x y z, lt x y -> le y z -> lt x z.
+  Proof.
+    intros x y z H1 H2.
+    apply le_not_lt in H2.
+    apply (lt_or _ _ z) in H1.
+    tauto.
+  Defined.
+
+  Theorem le_lt_trans : forall x y z, le x y -> lt y z -> lt x z.
+  Proof.
+    intros x y z H1 H2.
+    apply le_not_lt in H1.
+    apply (lt_or _ _ x) in H2.
+    tauto.
+  Defined.
+
   Theorem eqv_refl :
     forall x, eqv x x.
   Proof.

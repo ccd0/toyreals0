@@ -10,14 +10,10 @@ Module RE.
   }.
 
   Definition min (x : estimate) : Q :=
-    match x with
-    | make val err => val - err
-    end.
+    value x - error x.
 
   Definition max (x : estimate) : Q :=
-    match x with
-    | make val err => val + err
-    end.
+    value x + error x.
 
   Definition estimator : Set :=
     Q -> estimate.
@@ -293,7 +289,7 @@ Module R.
       Proper (RE.point_in ==> RE.point_in ==> RE.value_in) plus1.
     Proof.
       intros _ _ [x [x0 dx] Hx] _ _ [y [y0 dy] Hy].
-      unfold RE.value_in.
+      unfold RE.value_in, RE.min, RE.max in *.
       cbn - [Qred] in *.
       repeat rewrite Qred_correct.
       setoid_replace (x0 + y0 - (dx + dy)) with ((x0 - dx) + (y0 - dy)) by ring.

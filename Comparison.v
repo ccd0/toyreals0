@@ -44,10 +44,10 @@ Proof.
   unfold is_Rlt_witness.
   setoid_replace (R.upper_bound x t)
     with (R.lower_bound x t + 2 * RE.error (R.compute x t))
-    by (unfold R.upper_bound, R.lower_bound; destruct (R.compute x t); cbn; ring).
+    by (unfold R.upper_bound, R.lower_bound, RE.min, RE.max; ring).
   setoid_replace (R.lower_bound y t)
     with (R.upper_bound y t - 2 * RE.error (R.compute y t))
-    by (unfold R.upper_bound, R.lower_bound; destruct (R.compute y t); cbn; ring).
+    by (unfold R.upper_bound, R.lower_bound, RE.min, RE.max; ring).
   apply (Qle_lt_trans _ (R.upper_bound x tx + 2 * RE.error (R.compute x t)));
     [apply Qplus_le_l, R.compute_consistent|].
   apply (Qlt_le_trans _ (R.lower_bound y ty - 2 * RE.error (R.compute y t)));

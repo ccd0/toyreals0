@@ -430,4 +430,9 @@ Module R.
   Definition plus (x y : R) : R :=
     make (plus.plus2 x y) (plus.consistent x y) (plus.meets_target x y).
 
+  Add Morphism plus with signature (eqv ==> eqv ==> eqv) as plus_mor.
+  Proof.
+    apply plus.compatible.
+  Qed.
+
 End R. Export R (R).

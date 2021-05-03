@@ -151,6 +151,16 @@ Module R.
       apply H.
   Qed.
 
+  Theorem lt_trans : forall x y z, lt x y -> lt y z -> lt x z.
+  Proof.
+    intros x y z [t1 [t2 H1]] [t3 [t4 H2]].
+    exists t1, t4.
+    apply (Qlt_trans _ (lower_bound y t2));
+      [|apply (Qle_lt_trans _ (upper_bound y t3))];
+        trivial.
+    apply compute_consistent.
+  Defined.
+
   Theorem eqv_refl :
     forall x, eqv x x.
   Proof.

@@ -235,12 +235,29 @@ Module R.
     tauto.
   Defined.
 
-  Theorem eqv_refl :
-    forall x, eqv x x.
+  Theorem eqv_refl : forall x, eqv x x.
   Proof.
     intros x.
     split; apply R.compute_consistent.
   Qed.
+
+  Theorem eqv_sym : forall x y, eqv x y -> eqv y x.
+  Proof.
+    intros x y [H1 H2].
+    split; trivial.
+  Qed.
+
+  Theorem eqv_trans : forall x y z, eqv x y -> eqv y z -> eqv x z.
+  Proof.
+    intros x y z [H1 H2] [H3 H4].
+    split; apply (le_trans _ y); trivial.
+  Qed.
+
+  Add Relation R eqv
+    reflexivity proved by eqv_refl
+    symmetry proved by eqv_sym
+    transitivity proved by eqv_trans
+    as eqv_rel.
 
   Theorem eqv_overlaps :
     forall x y,

@@ -31,14 +31,21 @@ Module RE.
   Definition le (x y : estimator) : Prop :=
     forall t1 t2, min (x t1) <= max (y t2).
 
+  Definition eqv (x y : estimator) : Prop :=
+    le x y /\ le y x.
+
   Definition exact (x : Q) : estimate :=
     make x 0.
 
   Definition overlaps (x1 x2 : estimate) : Prop :=
     Qmax (min x1) (min x2) <= Qmin (max x1) (max x2).
 
-  Definition within (x : Q) (xs : estimate) : Prop :=
-    min xs <= x <= max xs.
+  Inductive point_in : estimate -> estimate -> Prop :=
+    | point_in_intro (x : Q) (xs : estimate) :
+        min xs <= x <= max xs -> point_in (exact x) xs.
+
+  Definition value_in (xs ys : estimate) : Prop :=
+    min ys <= value xs <= max ys.
 
   Lemma average_between :
     forall x y, x <= y -> x <= (x + y) / 2 <= y.
@@ -220,6 +227,48 @@ Module R.
     let den' := Z.pos den # 1 in
       Qfloor (Qapprox x (2 * den') * den' + (1 # 2)) # den.
 
+  Theorem errors_correct_compatible1 :
+    forall f tx,
+      Proper (RE.point_in ==> RE.value_in) f ->
+        Proper (eqv ==> RE.eqv)
+          (fun x t => f (compute x (tx x t))).
+  Proof.
+    intros f tx H x1 x2 Hx.
+    split; [intros t1 t2|intros t2 t1];
+      set (tx1 := tx x1 t1);
+      set (tx2 := tx x2 t2);
+      apply (eqv_common_point tx1 tx2) in Hx;
+      set (x := RE.common_point (compute x1 tx1) (compute x2 tx2)) in *;
+      set (v := f (RE.exact x));
+      apply (Qle_trans _ (RE.value v));
+        apply H;
+          apply RE.point_in_intro;
+          tauto.
+  Qed.
+
+  Theorem errors_correct_compatible2 :
+    forall f tx ty,
+      Proper (RE.point_in ==> RE.point_in ==> RE.value_in) f ->
+        Proper (eqv ==> eqv ==> RE.eqv)
+          (fun x y t => f (compute x (tx x y t)) (compute y (ty x y t))).
+  Proof.
+    intros f tx ty H x1 x2 Hx y1 y2 Hy.
+    split; [intros t1 t2|intros t2 t1];
+      set (tx1 := tx x1 y1 t1);
+      set (tx2 := tx x2 y2 t2);
+      set (ty1 := ty x1 y1 t1);
+      set (ty2 := ty x2 y2 t2);
+      apply (eqv_common_point tx1 tx2) in Hx;
+      apply (eqv_common_point ty1 ty2) in Hy;
+      set (x := RE.common_point (compute x1 tx1) (compute x2 tx2)) in *;
+      set (y := RE.common_point (compute y1 ty1) (compute y2 ty2)) in *;
+      set (v := f (RE.exact x) (RE.exact y));
+      apply (Qle_trans _ (RE.value v));
+        apply H;
+          apply RE.point_in_intro;
+          tauto.
+  Qed.
+
   Module plus.
 
     Definition plus1 (x y : RE.estimate) : RE.estimate :=
@@ -231,12 +280,10 @@ Module R.
       plus1 (R.compute x (2 * t)) (R.compute y (2 * t)).
 
     Lemma errors_correct :
-      forall x xrange y yrange,
-        RE.within x xrange ->  RE.within y yrange ->
-          RE.within (Qred (x + y)) (plus1 xrange yrange).
+      Proper (RE.point_in ==> RE.point_in ==> RE.value_in) plus1.
     Proof.
-      intros x [x0 dx] y [y0 dy] Hx Hy.
-      unfold RE.within in *.
+      intros _ _ [x [x0 dx] Hx] _ _ [y [y0 dy] Hy].
+      unfold RE.value_in.
       cbn - [Qred] in *.
       repeat rewrite Qred_correct.
       setoid_replace (x0 + y0 - (dx + dy)) with ((x0 - dx) + (y0 - dy)) by ring.
@@ -244,25 +291,15 @@ Module R.
       split; apply Qplus_le_compat; tauto.
     Qed.
 
-    Lemma compatible' :
-      Proper (eqv ==> eqv ==> RE.le) plus2.
+    Lemma compatible : Proper (eqv ==> eqv ==> RE.eqv) plus2.
     Proof.
-      unfold plus2.
-      intros x1 x2 Hx y1 y2 Hy t1 t2.
-      apply (eqv_common_point (2 * t1) (2 * t2)) in Hx, Hy.
-      set (x := RE.common_point (compute x1 (2 * t1)) (compute x2 (2 * t2))) in *.
-      set (y := RE.common_point (compute y1 (2 * t1)) (compute y2 (2 * t2))) in *.
-      set (z := plus1 (RE.exact x) (RE.exact y)).
-      apply (Qle_trans _ (RE.value z));
-        apply errors_correct;
-        unfold RE.within;
-        tauto.
+      apply errors_correct_compatible2, errors_correct.
     Qed.
 
     Theorem consistent : forall x y, RE.consistent (plus2 x y).
     Proof.
       intros x y t1 t2.
-      apply compatible'; apply eqv_refl.
+      apply compatible; apply eqv_refl.
     Qed.
 
     Theorem meets_target : forall x y, RE.meets_target (plus2 x y).

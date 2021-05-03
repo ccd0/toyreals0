@@ -147,6 +147,25 @@ Module R.
       apply H.
   Qed.
 
+  Theorem lt_irrefl : forall x, ~ lt x x.
+  Proof.
+    intros x [t1 [t2 H]].
+    contradict H.
+    apply Qle_not_lt, compute_consistent.
+  Qed.
+
+  Theorem lt_not_gt : forall x y, lt x y -> ~ lt y x.
+  Proof.
+    intros x y [t1 [t2 H1]] [t3 [t4 H2]].
+    apply (Qlt_le_trans _  _ (upper_bound y t3)) in H1.
+    - apply (Qlt_trans _ _ (lower_bound x t4)) in H1; trivial.
+      apply (Qlt_le_trans _  _ (upper_bound x t1)) in H1.
+      + contradict H1.
+        apply Qlt_irrefl.
+      + apply compute_consistent.
+    - apply compute_consistent.
+  Qed.
+
   Theorem lt_trans : forall x y z, lt x y -> lt y z -> lt x z.
   Proof.
     intros x y z [t1 [t2 H1]] [t3 [t4 H2]].

@@ -259,6 +259,15 @@ Module R.
     transitivity proved by eqv_trans
     as eqv_rel.
 
+  Theorem eqv_not_neq : forall x y, eqv x y <-> ~ neq y x.
+  Proof.
+    intros x y.
+    split.
+    - intros [H1 H2] [H3|H3]; revert H3; apply le_not_lt; trivial.
+    - intro H3.
+      split; apply le_not_lt; contradict H3; [left|right]; trivial.
+  Qed.
+
   Theorem eqv_overlaps :
     forall x y,
       eqv x y <->

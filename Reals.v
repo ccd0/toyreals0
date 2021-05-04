@@ -1,8 +1,10 @@
 Require Import Coq.QArith.QArith.
 Require Import Coq.QArith.Qround.
 Require Import Coq.QArith.Qminmax.
+Global Close Scope Q_scope.
 
 Module RE.
+  Local Open Scope Q_scope.
 
   Record estimate : Set := make {
     value : Q;
@@ -75,6 +77,10 @@ End RE.
 
 Module R.
 
+  Declare Scope R_scope.
+  Delimit Scope R_scope with R.
+  Local Open Scope R_scope.
+
   Record R : Set := make {
     compute : RE.estimator;
     compute_consistent : RE.consistent compute;
@@ -93,7 +99,7 @@ Module R.
   Module ofQ.
 
     Definition ofQ1 (x t : Q) : RE.estimate :=
-      RE.make x 0.
+      RE.exact x.
 
     Theorem consistent : forall x, RE.consistent (ofQ1 x).
     Proof.
@@ -115,24 +121,28 @@ Module R.
     make (ofQ.ofQ1 x) (ofQ.consistent x) (ofQ.meets_target x).
 
   Definition le (x y : R) : Prop :=
-    forall tx ty, lower_bound x tx <= upper_bound y ty.
+    (forall tx ty, lower_bound x tx <= upper_bound y ty)%Q.
 
-  Definition ge (x y : R) : Prop :=
-    le y x.
+  Infix "<=" := le : R_scope.
+  Notation "x >= y" := (le y x) (only parsing) : R_scope.
 
   Definition eqv (x y : R) : Prop :=
-    le x y /\ le y x.
+    x <= y /\ y <= x.
+
+  Infix "==" := eqv (at level 70, no associativity) : R_scope.
 
   Definition lt (x y : R) : Prop :=
-    exists tx ty, upper_bound x tx < lower_bound y ty.
+    (exists tx ty, upper_bound x tx < lower_bound y ty)%Q.
 
-  Definition gt (x y : R) : Prop :=
-    lt y x.
+  Infix "<" := lt : R_scope.
+  Notation "x > y" := (lt y x) (only parsing) : R_scope.
 
-  Definition neq (x y : R) : Prop :=
-    lt x y \/ lt y x.
+  Definition apart (x y : R) : Prop :=
+    x < y \/ y < x.
 
-  Theorem le_not_lt : forall x y, le x y <-> ~ lt y x.
+  Infix "=/=" := apart (no associativity, at level 70) : R_scope.
+
+  Theorem le_not_gt : forall x y, x <= y <-> ~ y < x.
   Proof.
     intros x y.
     split.
@@ -147,14 +157,14 @@ Module R.
       apply H.
   Qed.
 
-  Theorem lt_irrefl : forall x, ~ lt x x.
+  Theorem lt_irrefl : forall x, ~ x < x.
   Proof.
     intros x [t1 [t2 H]].
     contradict H.
     apply Qle_not_lt, compute_consistent.
   Qed.
 
-  Theorem lt_not_gt : forall x y, lt x y -> ~ lt y x.
+  Theorem lt_antisym : forall x y, x < y -> ~ y < x.
   Proof.
     intros x y [t1 [t2 H1]] [t3 [t4 H2]].
     apply (Qlt_le_trans _  _ (upper_bound y t3)) in H1.
@@ -166,7 +176,7 @@ Module R.
     - apply compute_consistent.
   Qed.
 
-  Theorem lt_trans : forall x y z, lt x y -> lt y z -> lt x z.
+  Theorem lt_trans : forall x y z, x < y -> y < z -> x < z.
   Proof.
     intros x y z [t1 [t2 H1]] [t3 [t4 H2]].
     exists t1, t4.
@@ -177,8 +187,8 @@ Module R.
   Defined.
 
   Lemma eventual_not_both :
-    forall x y z t, x < y -> 2 / (y - x) < t ->
-      y <= upper_bound z t -> x < lower_bound z t.
+    (forall x y z t, x < y -> 2 / (y - x) < t ->
+      y <= upper_bound z t -> x < lower_bound z t)%Q.
   Proof.
     intros x y z t H1 H2 H3.
     apply Qnot_le_lt.
@@ -187,37 +197,37 @@ Module R.
     rewrite Qplus_opp_r in H1.
     apply Qopp_le_compat in H4.
     apply (Qplus_le_compat _ _ _ _ H3) in H4.
-    setoid_replace (upper_bound z t + - lower_bound z t)
-      with (2 * RE.error (compute z t)) in H4
+    setoid_replace (upper_bound z t + - lower_bound z t)%Q
+      with (2 * RE.error (compute z t))%Q in H4
       by (unfold upper_bound, lower_bound, RE.min, RE.max; ring).
-    assert (0 < 2 / (y - x)) as H5
+    assert (0 < 2 / (y - x))%Q as H5
       by (apply Qlt_shift_div_l; trivial; ring_simplify; reflexivity).
-    assert (0 < t) as H6
+    assert (0 < t)%Q as H6
       by (apply (Qlt_trans _ (2 / (y - x))); trivial).
     contradict H2.
     apply Qle_not_lt.
     apply Qle_shift_div_l; trivial.
     apply (Qle_trans _ (2 * (t * RE.error (compute z t)))).
-    - setoid_replace (2 * (t * RE.error (compute z t)))
-        with (t * (2 * RE.error (compute z t))) by ring.
+    - setoid_replace (2 * (t * RE.error (compute z t)))%Q
+        with (t * (2 * RE.error (compute z t)))%Q by ring.
       apply Qmult_le_l; trivial.
     - apply (Qmult_le_l _ 1 2); [reflexivity|].
       apply compute_meets_target.
   Qed.
 
-  Lemma Qplus1_gt : forall x, x < x + 1.
+  Lemma Qplus1_gt : (forall x, x < x + 1)%Q.
     intro x.
     rewrite <- (Qplus_0_r x) at 1.
     apply Qplus_lt_r.
     reflexivity.
   Qed.
 
-  Theorem lt_or : forall x y z, lt x y -> lt z y \/ lt x z.
+  Theorem lt_or : forall x y z, x < y -> z < y \/ x < z.
   Proof.
     intros x y z [t1 [t2 H]].
     set (a := upper_bound x t1) in *.
     set (b := lower_bound y t2) in *.
-    set (t := 2 / (b - a) + 1).
+    set (t := (2 / (b - a) + 1)%Q).
     destruct (Qlt_le_dec (upper_bound z t) b) as [H2|H2].
     - left.
       exists t, t2.
@@ -228,45 +238,45 @@ Module R.
       apply Qplus1_gt.
   Defined.
 
-  Theorem le_trans : forall x y z, le x y -> le y z -> le x z.
+  Theorem le_trans : forall x y z, x <= y -> y <= z -> x <= z.
   Proof.
     intros x y z H1 H2.
-    apply le_not_lt in H1, H2.
-    apply le_not_lt.
+    apply le_not_gt in H1, H2.
+    apply le_not_gt.
     intro H3.
     apply (lt_or _ _ y) in H3.
     tauto.
   Qed.
 
-  Theorem lt_le_trans : forall x y z, lt x y -> le y z -> lt x z.
+  Theorem lt_le_trans : forall x y z, x < y -> y <= z -> x < z.
   Proof.
     intros x y z H1 H2.
-    apply le_not_lt in H2.
+    apply le_not_gt in H2.
     apply (lt_or _ _ z) in H1.
     tauto.
   Defined.
 
-  Theorem le_lt_trans : forall x y z, le x y -> lt y z -> lt x z.
+  Theorem le_lt_trans : forall x y z, x <= y -> y < z -> x < z.
   Proof.
     intros x y z H1 H2.
-    apply le_not_lt in H1.
+    apply le_not_gt in H1.
     apply (lt_or _ _ x) in H2.
     tauto.
   Defined.
 
-  Theorem eqv_refl : forall x, eqv x x.
+  Theorem eqv_refl : forall x, x == x.
   Proof.
     intros x.
     split; apply R.compute_consistent.
   Qed.
 
-  Theorem eqv_sym : forall x y, eqv x y -> eqv y x.
+  Theorem eqv_sym : forall x y, x == y -> y == x.
   Proof.
     intros x y [H1 H2].
     split; trivial.
   Qed.
 
-  Theorem eqv_trans : forall x y z, eqv x y -> eqv y z -> eqv x z.
+  Theorem eqv_trans : forall x y z, x == y -> y == z -> x == z.
   Proof.
     intros x y z [H1 H2] [H3 H4].
     split; apply (le_trans _ y); trivial.
@@ -278,18 +288,18 @@ Module R.
     transitivity proved by eqv_trans
     as eqv_rel.
 
-  Theorem eqv_not_neq : forall x y, eqv x y <-> ~ neq y x.
+  Theorem eqv_not_apart : forall x y, x == y <-> ~ x =/= y.
   Proof.
     intros x y.
     split.
-    - intros [H1 H2] [H3|H3]; revert H3; apply le_not_lt; trivial.
+    - intros [H1 H2] [H3|H3]; revert H3; apply le_not_gt; trivial.
     - intro H3.
-      split; apply le_not_lt; contradict H3; [left|right]; trivial.
+      split; apply le_not_gt; contradict H3; [right|left]; trivial.
   Qed.
 
   Theorem eqv_overlaps :
     forall x y,
-      eqv x y <->
+      x == y <->
       forall tx ty, RE.overlaps (compute x tx) (compute y ty).
   Proof.
     intros x y.
@@ -304,22 +314,22 @@ Module R.
   Qed.
 
   Theorem eqv_common_point :
-    forall tx ty x y, eqv x y ->
-      RE.min (compute x tx) <= RE.common_point (compute x tx) (compute y ty) <= RE.max (compute x tx) /\
-      RE.min (compute y ty) <= RE.common_point (compute x tx) (compute y ty) <= RE.max (compute y ty).
+    forall tx ty x y, x == y ->
+      (RE.min (compute x tx) <= RE.common_point (compute x tx) (compute y ty) <= RE.max (compute x tx) /\
+       RE.min (compute y ty) <= RE.common_point (compute x tx) (compute y ty) <= RE.max (compute y ty))%Q.
   Proof.
     intros tx ty x y H.
     apply RE.common_point_spec, eqv_overlaps, H.
   Qed.
 
-  Theorem ofQ_lt : forall x y, x < y -> lt (ofQ x) (ofQ y).
+  Theorem ofQ_lt : forall x y, (x < y)%Q -> ofQ x < ofQ y.
   Proof.
     intros x y H.
-    exists 0, 0.
+    exists 0%Q, 0%Q.
     apply Qplus_lt_l, H.
   Defined.
 
-  Theorem ofQ_neq : forall x y, ~ x == y -> neq (ofQ x) (ofQ y).
+  Theorem ofQ_apart : forall x y, (~ x == y)%Q -> ofQ x =/= ofQ y.
   Proof.
     intros x y H.
     destruct (Q_dec x y) as [[H2|H2]|H2].
@@ -331,7 +341,7 @@ Module R.
   Defined.
 
   Theorem lower_bound_spec :
-    forall x t, le (ofQ (lower_bound x t)) x.
+    forall x t, ofQ (lower_bound x t) <= x.
   Proof.
     intros x t t1 t2.
     apply (Qle_trans _ (lower_bound x t)).
@@ -342,7 +352,7 @@ Module R.
   Qed.
 
   Theorem upper_bound_spec :
-    forall x t, le x (ofQ (upper_bound x t)).
+    forall x t, x <= ofQ (upper_bound x t).
   Proof.
     intros x t t1 t2.
     apply (Qle_trans _ (upper_bound x t)).
@@ -353,8 +363,8 @@ Module R.
   Qed.
 
   Definition Qapprox_w_den (x : R) (den : positive) : Q :=
-    let den' := Z.pos den # 1 in
-      Qfloor (Qapprox x (2 * den') * den' + (1 # 2)) # den.
+    (let den' := Z.pos den # 1 in
+      Qfloor (Qapprox x (2 * den') * den' + (1 # 2)) # den)%Q.
 
   Theorem errors_correct_compatible1 :
     forall f tx,
@@ -406,7 +416,7 @@ Module R.
         (Qred (RE.error x + RE.error y)).
 
     Definition plus2 (x y : R) (t : Q) : RE.estimate :=
-      plus1 (R.compute x (2 * t)) (R.compute y (2 * t)).
+      (plus1 (R.compute x (2 * t)) (R.compute y (2 * t)))%Q.
 
     Lemma errors_correct :
       Proper (RE.point_in ==> RE.point_in ==> RE.value_in) plus1.
@@ -415,8 +425,8 @@ Module R.
       unfold RE.value_in, RE.min, RE.max in *.
       cbn - [Qred] in *.
       repeat rewrite Qred_correct.
-      setoid_replace (x0 + y0 - (dx + dy)) with ((x0 - dx) + (y0 - dy)) by ring.
-      setoid_replace (x0 + y0 + (dx + dy)) with ((x0 + dx) + (y0 + dy)) by ring.
+      setoid_replace (x0 + y0 - (dx + dy))%Q with ((x0 - dx) + (y0 - dy))%Q by ring.
+      setoid_replace (x0 + y0 + (dx + dy))%Q with ((x0 + dx) + (y0 + dy))%Q by ring.
       split; apply Qplus_le_compat; tauto.
     Qed.
 
@@ -436,11 +446,11 @@ Module R.
       intros x y t.
       cbn - [Qred].
       rewrite Qred_correct.
-      pose (R.compute_meets_target x (2 * t)) as Hx.
-      pose (R.compute_meets_target y (2 * t)) as Hy.
+      pose (R.compute_meets_target x (2 * t))%Q as Hx.
+      pose (R.compute_meets_target y (2 * t))%Q as Hy.
       apply (Qmult_le_l _ _ 2); [reflexivity|].
       ring_simplify.
-      replace 2 with (1 + 1) at 5 by trivial.
+      replace 2%Q with (1 + 1)%Q at 5 by trivial.
       apply Qplus_le_compat; trivial.
     Qed.
 
@@ -449,9 +459,20 @@ Module R.
   Definition plus (x y : R) : R :=
     make (plus.plus2 x y) (plus.consistent x y) (plus.meets_target x y).
 
+  Infix "+" := plus : R_scope.
+
   Add Morphism plus with signature (eqv ==> eqv ==> eqv) as plus_mor.
   Proof.
     apply plus.compatible.
   Qed.
 
 End R. Export R (R).
+
+Delimit Scope R_scope with R.
+Infix "<=" := R.le : R_scope.
+Notation "x >= y" := (R.le y x) (only parsing) : R_scope.
+Infix "==" := R.eqv (at level 70, no associativity) : R_scope.
+Infix "<" := R.lt : R_scope.
+Notation "x > y" := (R.lt y x) (only parsing) : R_scope.
+Infix "=/=" := R.apart (no associativity, at level 70) : R_scope.
+Infix "+" := R.plus : R_scope.

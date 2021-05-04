@@ -2,12 +2,15 @@ Require Import ToyReals.Reals.
 Require Import Coq.QArith.QArith.
 Require Import Coq.QArith.Qround.
 Require Import Coq.Logic.ConstructiveEpsilon.
+Global Close Scope Q_scope.
+
+Local Open Scope R_scope.
 
 Definition is_Rlt_witness (x y : R) (t : Q * Q) : Prop :=
-  R.upper_bound x (fst t) < R.lower_bound y (snd t).
+  (R.upper_bound x (fst t) < R.lower_bound y (snd t))%Q.
 
 Lemma is_Rlt_witness_spec :
-  forall x y t, is_Rlt_witness x y t -> R.lt x y.
+  forall x y t, is_Rlt_witness x y t -> x < y.
 Proof.
   intros x y [tx ty] H.
   exists tx, ty.
@@ -32,21 +35,21 @@ Qed.
 Definition wsame (t : Q) : Q * Q := (t, t).
 
 Definition Rlt_witness_make_same (x y : R) (t : Q * Q) : Q :=
-  8 / (R.lower_bound y (snd t) - R.upper_bound x (fst t)).
+  (8 / (R.lower_bound y (snd t) - R.upper_bound x (fst t)))%Q.
 
 Lemma Rlt_witness_make_same_spec :
   forall x y t,
     is_Rlt_witness x y t ->
-      forall t2, Rlt_witness_make_same x y t <= t2 ->
+      forall t2, (Rlt_witness_make_same x y t <= t2)%Q ->
         is_Rlt_witness x y (wsame t2).
 Proof.
   intros x y [tx ty] H t Ht.
   unfold is_Rlt_witness.
   setoid_replace (R.upper_bound x t)
-    with (R.lower_bound x t + 2 * RE.error (R.compute x t))
+    with (R.lower_bound x t + 2 * RE.error (R.compute x t))%Q
     by (unfold R.upper_bound, R.lower_bound, RE.min, RE.max; ring).
   setoid_replace (R.lower_bound y t)
-    with (R.upper_bound y t - 2 * RE.error (R.compute y t))
+    with (R.upper_bound y t - 2 * RE.error (R.compute y t))%Q
     by (unfold R.upper_bound, R.lower_bound, RE.min, RE.max; ring).
   apply (Qle_lt_trans _ (R.upper_bound x tx + 2 * RE.error (R.compute x t)));
     [apply Qplus_le_l, R.compute_consistent|].
@@ -55,12 +58,12 @@ Proof.
   apply (Qplus_lt_l _ _ (2 * RE.error (R.compute y t) - R.upper_bound x tx)).
   apply (Qmult_lt_l _ _ (1 # 2)); [reflexivity|].
   ring_simplify.
-  setoid_replace ((-1 # 2) * R.upper_bound x tx + (1 # 2) * R.lower_bound y ty)
-    with ((R.lower_bound y ty - R.upper_bound x tx) / 2) by field.
+  setoid_replace ((-1 # 2) * R.upper_bound x tx + (1 # 2) * R.lower_bound y ty)%Q
+    with ((R.lower_bound y ty - R.upper_bound x tx) / 2)%Q by field.
   unfold Rlt_witness_make_same in Ht.
   cbn in Ht.
-  set (z := R.lower_bound y ty - R.upper_bound x tx) in *.
-  assert (z > 0) as Hz.
+  set (z := (R.lower_bound y ty - R.upper_bound x tx)%Q) in *.
+  assert (z > 0)%Q as Hz.
   - subst z.
     setoid_rewrite <- (Qplus_opp_r (R.upper_bound x tx)).
     apply Qplus_lt_l.
@@ -83,18 +86,18 @@ Proof.
       discriminate.
 Qed.
 
-Definition is_Rneq_witness (x y : R) (t : Q * Q) : Prop :=
+Definition is_Rapart_witness (x y : R) (t : Q * Q) : Prop :=
   is_Rlt_witness x y t \/ is_Rlt_witness y x t.
 
-Lemma is_Rneq_witness_spec :
-  forall x y t, is_Rneq_witness x y t -> R.neq x y.
+Lemma is_Rapart_witness_spec :
+  forall x y t, is_Rapart_witness x y t -> x =/= y.
 Proof.
   intros x y t [H|H]; [left|right];
     apply (is_Rlt_witness_spec _ _ t H).
 Defined.
 
-Lemma Rneq_witness_exists :
-  forall x y, R.neq x y -> exists t, is_Rneq_witness x y t.
+Lemma Rapart_witness_exists :
+  forall x y, x =/= y -> exists t, is_Rapart_witness x y t.
 Proof.
   intros x y p.
   destruct p as [p|p];
@@ -104,21 +107,21 @@ Proof.
     exact p.
 Defined.
 
-Definition is_Rneq_witness_bool (x y : R) (t : Q * Q) : bool :=
+Definition is_Rapart_witness_bool (x y : R) (t : Q * Q) : bool :=
   is_Rlt_witness_bool x y t || is_Rlt_witness_bool y x t.
 
-Lemma is_Rneq_witness_bool_spec :
-  forall x y t, is_Rneq_witness_bool x y t = true <-> is_Rneq_witness x y t.
+Lemma is_Rapart_witness_bool_spec :
+  forall x y t, is_Rapart_witness_bool x y t = true <-> is_Rapart_witness x y t.
 Proof.
   intros x y t.
-  unfold is_Rneq_witness_bool, is_Rneq_witness.
+  unfold is_Rapart_witness_bool, is_Rapart_witness.
   rewrite orb_true_iff.
   repeat rewrite is_Rlt_witness_bool_spec.
   tauto.
 Qed.
 
-Lemma Rneq_witness_not_lt_gt :
-  forall x y t, is_Rneq_witness x y t ->
+Lemma Rapart_witness_not_lt_gt :
+  forall x y t, is_Rapart_witness x y t ->
     is_Rlt_witness_bool x y t = false -> is_Rlt_witness y x t.
 Proof.
   intros x y t H1 H2.
@@ -129,27 +132,27 @@ Proof.
   discriminate.
 Qed.
 
-Definition Rneq_witness_make_same (x y : R) (t : Q * Q) : Q :=
+Definition Rapart_witness_make_same (x y : R) (t : Q * Q) : Q :=
   if is_Rlt_witness_bool x y t then
     Rlt_witness_make_same x y t
   else
     Rlt_witness_make_same y x t.
 
-Lemma Rneq_witness_make_same_spec :
+Lemma Rapart_witness_make_same_spec :
   forall x y t,
-    is_Rneq_witness x y t ->
-      forall t2, Rneq_witness_make_same x y t <= t2 ->
-        is_Rneq_witness x y (wsame t2).
+    is_Rapart_witness x y t ->
+      forall t2, (Rapart_witness_make_same x y t <= t2)%Q ->
+        is_Rapart_witness x y (wsame t2).
 Proof.
   intros x y t Ht t2 Ht2.
-  unfold Rneq_witness_make_same, is_Rneq_witness in *.
+  unfold Rapart_witness_make_same, is_Rapart_witness in *.
   destruct (is_Rlt_witness_bool x y t) eqn:E.
   - left.
     apply (Rlt_witness_make_same_spec x y t); trivial.
     apply is_Rlt_witness_bool_spec, E.
   - right.
     apply (Rlt_witness_make_same_spec y x t); trivial.
-    apply Rneq_witness_not_lt_gt; trivial.
+    apply Rapart_witness_not_lt_gt; trivial.
 Qed.
 
 Definition wlog2 (t : Q) : nat :=
@@ -159,7 +162,7 @@ Definition wpow2 (n : nat) : Q :=
   inject_Z (Z.of_nat (2 ^ n)).
 
 Lemma wlog2_spec :
-  forall t, t <= wpow2 (wlog2 t).
+  forall t, (t <= wpow2 (wlog2 t))%Q.
 Proof.
   intro t.
   unfold wpow2, wlog2.
@@ -172,58 +175,58 @@ Proof.
   rewrite <- (Z2Nat.id (Z.max 2 (Qceiling t))) at 1 by apply H.
   apply inj_le.
   apply Nat.log2_up_spec.
-  apply (lt_le_trans _ 2); auto.
+  apply (Nat.lt_le_trans _ 2); auto.
   change (Z.to_nat 2 <= Z.to_nat (Z.max 2 (Qceiling t)))%nat.
   apply Z2Nat.inj_le; trivial; try discriminate.
   apply Z.le_max_l.
 Qed.
 
-Definition is_Rneq_witness_pow2 (x y : R) (n : nat) : bool :=
-  is_Rneq_witness_bool x y (wsame (wpow2 n)).
+Definition is_Rapart_witness_pow2 (x y : R) (n : nat) : bool :=
+  is_Rapart_witness_bool x y (wsame (wpow2 n)).
 
-Lemma Rneq_witness_pow2_exists :
-  forall x y, R.neq x y -> exists n, is_Rneq_witness_pow2 x y n = true.
+Lemma Rapart_witness_pow2_exists :
+  forall x y, x =/= y -> exists n, is_Rapart_witness_pow2 x y n = true.
 Proof.
   intros x y p.
-  apply Rneq_witness_exists in p.
+  apply Rapart_witness_exists in p.
   destruct p as [t p].
-  set (t2 := Rneq_witness_make_same x y t).
+  set (t2 := Rapart_witness_make_same x y t).
   exists (wlog2 t2).
-  apply is_Rneq_witness_bool_spec.
-  apply (Rneq_witness_make_same_spec x y t p).
+  apply is_Rapart_witness_bool_spec.
+  apply (Rapart_witness_make_same_spec x y t p).
   apply wlog2_spec.
 Defined.
 
-Definition get_Rneq_witness (x y : R) (p : R.neq x y) : Q * Q :=
+Definition get_Rapart_witness (x y : R) (p : x =/= y) : Q * Q :=
   wsame (wpow2 (
     constructive_ground_epsilon_nat
-      (fun n => is_Rneq_witness_pow2 x y n = true)
-      (fun n => bool_dec (is_Rneq_witness_pow2 x y n) true)
-      (Rneq_witness_pow2_exists x y p)
+      (fun n => is_Rapart_witness_pow2 x y n = true)
+      (fun n => bool_dec (is_Rapart_witness_pow2 x y n) true)
+      (Rapart_witness_pow2_exists x y p)
   )).
 
-Lemma get_Rneq_witness_spec :
-  forall x y p, is_Rneq_witness x y (get_Rneq_witness x y p).
+Lemma get_Rapart_witness_spec :
+  forall x y p, is_Rapart_witness x y (get_Rapart_witness x y p).
 Proof.
   intros x y p.
-  unfold get_Rneq_witness.
-  apply is_Rneq_witness_bool_spec.
+  unfold get_Rapart_witness.
+  apply is_Rapart_witness_bool_spec.
   apply constructive_ground_epsilon_spec_nat.
 Defined.
 
-Definition Rlt_bool (x y : R) (p : R.neq x y) : bool :=
-  is_Rlt_witness_bool x y (get_Rneq_witness x y p).
+Definition Rlt_bool (x y : R) (p : x =/= y) : bool :=
+  is_Rlt_witness_bool x y (get_Rapart_witness x y p).
 
 Theorem Rlt_bool_spec :
-  forall x y p, if Rlt_bool x y p then R.lt x y else R.lt y x.
+  forall x y p, if Rlt_bool x y p then x < y else y < x.
 Proof.
   intros x y p.
   unfold Rlt_bool.
-  set (t := get_Rneq_witness x y p).
+  set (t := get_Rapart_witness x y p).
   destruct (is_Rlt_witness_bool x y t) eqn:E.
   - apply (is_Rlt_witness_spec x y t).
     apply is_Rlt_witness_bool_spec, E.
   - apply (is_Rlt_witness_spec y x t).
-    apply Rneq_witness_not_lt_gt; trivial.
-    apply get_Rneq_witness_spec.
+    apply Rapart_witness_not_lt_gt; trivial.
+    apply get_Rapart_witness_spec.
 Defined.

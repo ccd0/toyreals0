@@ -338,8 +338,8 @@ Module R.
   Proof.
     intros x1 x2 Ex y1 y2 Ey.
     unfold apart.
-    rewrite Ex, Ey.
-    split; trivial.
+    split; (intros [H|H]; [left|right]);
+      revert H; apply lt_mor; trivial; apply eqv_sym; trivial.
   Defined.
 
   Theorem eqv_not_apart : forall x y, x == y <-> ~ x =/= y.

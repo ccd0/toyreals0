@@ -164,7 +164,7 @@ Module R.
     apply Qle_not_lt, compute_consistent.
   Qed.
 
-  Theorem lt_antisym : forall x y, x < y -> ~ y < x.
+  Theorem lt_not_gt : forall x y, x < y -> ~ y < x.
   Proof.
     intros x y [t1 [t2 H1]] [t3 [t4 H2]].
     apply (Qlt_le_trans _  _ (upper_bound y t3)) in H1.
@@ -174,6 +174,11 @@ Module R.
         apply Qlt_irrefl.
       + apply compute_consistent.
     - apply compute_consistent.
+  Qed.
+
+  Theorem lt_le : forall x y, x < y -> x <= y.
+    intros x y H.
+    apply le_not_gt, lt_not_gt, H.
   Qed.
 
   Theorem lt_trans : forall x y z, x < y -> y < z -> x < z.

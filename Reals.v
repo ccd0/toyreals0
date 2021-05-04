@@ -548,6 +548,14 @@ Module R.
     apply plus.compatible.
   Qed.
 
+  Theorem ofQ_plus : forall x y, ofQ (x + y) == ofQ x + ofQ y.
+  Proof.
+    intros x y.
+    compute - [Qred Qplus Qminus Qle].
+    repeat setoid_rewrite Qred_correct.
+    split; intros _ _; ring_simplify; apply Qle_refl.
+  Qed.
+
 End R. Export R (R).
 
 Delimit Scope R_scope with R.

@@ -241,6 +241,7 @@ Module R.
   Qed.
 
   Lemma Qplus1_gt : (forall x, x < x + 1)%Q.
+  Proof.
     intro x.
     rewrite <- (Qplus_0_r x) at 1.
     apply Qplus_lt_r.
@@ -331,7 +332,7 @@ Module R.
       apply (lt_le_trans _ y1); trivial.
     - apply (le_lt_trans _ x2); trivial.
       apply (lt_le_trans _ y2); trivial.
-  Qed.
+  Defined.
 
   Add Morphism apart with signature (eqv ==> eqv ==> iff) as apart_mor.
   Proof.
@@ -339,7 +340,7 @@ Module R.
     unfold apart.
     rewrite Ex, Ey.
     split; trivial.
-  Qed.
+  Defined.
 
   Theorem eqv_not_apart : forall x y, x == y <-> ~ x =/= y.
   Proof.

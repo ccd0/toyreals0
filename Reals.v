@@ -293,6 +293,34 @@ Module R.
     transitivity proved by eqv_trans
     as eqv_rel.
 
+  Add Morphism le with signature (eqv ==> eqv ==> iff) as le_mor.
+  Proof.
+    intros x1 x2 [Hx1 Hx2] y1 y2 [Hy1 Hy2].
+    split; intro H.
+    - apply (le_trans _ x1); trivial.
+      apply (le_trans _ y1); trivial.
+    - apply (le_trans _ x2); trivial.
+      apply (le_trans _ y2); trivial.
+  Qed.
+
+  Add Morphism lt with signature (eqv ==> eqv ==> iff) as lt_mor.
+  Proof.
+    intros x1 x2 [Hx1 Hx2] y1 y2 [Hy1 Hy2].
+    split; intro H.
+    - apply (le_lt_trans _ x1); trivial.
+      apply (lt_le_trans _ y1); trivial.
+    - apply (le_lt_trans _ x2); trivial.
+      apply (lt_le_trans _ y2); trivial.
+  Qed.
+
+  Add Morphism apart with signature (eqv ==> eqv ==> iff) as apart_mor.
+  Proof.
+    intros x1 x2 Ex y1 y2 Ey.
+    unfold apart.
+    rewrite Ex, Ey.
+    split; trivial.
+  Qed.
+
   Theorem eqv_not_apart : forall x y, x == y <-> ~ x =/= y.
   Proof.
     intros x y.

@@ -177,9 +177,23 @@ Module R.
   Qed.
 
   Theorem lt_le : forall x y, x < y -> x <= y.
+  Proof.
     intros x y H.
     apply le_not_gt, lt_not_gt, H.
   Qed.
+
+  Theorem eqv_le : forall x y, x == y -> x <= y.
+  Proof.
+    intros x y [H1 H2].
+    exact H1.
+  Qed.
+
+  Theorem lt_apart : forall x y, x < y -> x =/= y.
+  Proof.
+    intros x y H.
+    left.
+    exact H.
+  Defined.
 
   Theorem lt_trans : forall x y z, x < y -> y < z -> x < z.
   Proof.

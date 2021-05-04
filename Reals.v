@@ -195,6 +195,17 @@ Module R.
     exact H.
   Defined.
 
+  Theorem le_antisym : forall x y, x <= y -> y <= x -> x == y.
+  Proof.
+    intros x y H1 H2.
+    split; trivial.
+  Qed.
+
+  Theorem apart_sym : forall x y, x =/= y -> y =/= x.
+  Proof.
+    intros x y [H|H]; [right|left]; trivial.
+  Qed.
+
   Theorem lt_trans : forall x y z, x < y -> y < z -> x < z.
   Proof.
     intros x y z [t1 [t2 H1]] [t3 [t4 H2]].

@@ -201,11 +201,6 @@ Module R.
     split; trivial.
   Qed.
 
-  Theorem apart_sym : forall x y, x =/= y -> y =/= x.
-  Proof.
-    intros x y [H|H]; [right|left]; trivial.
-  Qed.
-
   Theorem lt_trans : forall x y z, x < y -> y < z -> x < z.
   Proof.
     intros x y z [t1 [t2 H1]] [t3 [t4 H2]].
@@ -354,6 +349,18 @@ Module R.
     - intro H3.
       split; apply le_not_gt; contradict H3; [right|left]; trivial.
   Qed.
+
+  Theorem apart_irrefl : forall x, ~ x =/= x.
+  Proof.
+    intros x.
+    apply eqv_not_apart.
+    reflexivity.
+  Qed.
+
+  Theorem apart_sym : forall x y, x =/= y -> y =/= x.
+  Proof.
+    intros x y [H|H]; [right|left]; trivial.
+  Defined.
 
   Theorem eqv_overlaps :
     forall x y,

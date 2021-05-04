@@ -406,6 +406,22 @@ Module R.
     - tauto.
   Defined.
 
+  Theorem ofQ_le : forall x y, (x <= y)%Q -> ofQ x <= ofQ y.
+  Proof.
+    intros x y H t1 t2.
+    unfold lower_bound, upper_bound, RE.min, RE.max.
+    cbn.
+    change (x + 0 <= y + 0)%Q.
+    repeat rewrite Qplus_0_r.
+    exact H.
+  Qed.
+
+  Add Morphism ofQ with signature (Qeq ==> eqv) as ofQ_mor.
+  Proof.
+    intros x y H.
+    split; apply ofQ_le; rewrite H; apply Qle_refl.
+  Qed.
+
   Theorem lower_bound_spec :
     forall x t, ofQ (lower_bound x t) <= x.
   Proof.

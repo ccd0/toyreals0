@@ -444,6 +444,26 @@ Module R.
       apply Qle_refl.
   Qed.
 
+  Theorem Qapprox_spec :
+    forall x t, (t > 0)%Q ->
+      ofQ (Qapprox x t - 1 / t) <= x /\ x <= ofQ (Qapprox x t + 1 / t).
+  Proof.
+    intros x t H.
+    assert (RE.error (R.compute x t) <= 1 / t)%Q as H2.
+    - apply Qle_shift_div_l; trivial.
+      rewrite Qmult_comm.
+      apply compute_meets_target.
+    - split.
+      + apply (le_trans _ (ofQ (lower_bound x t))), lower_bound_spec.
+        apply ofQ_le.
+        unfold Qapprox, lower_bound, RE.min.
+        apply Qplus_le_r, Qopp_le_compat, H2.
+      + apply (le_trans _ (ofQ (upper_bound x t))); [apply upper_bound_spec|].
+        apply ofQ_le.
+        unfold Qapprox, upper_bound, RE.max.
+        apply Qplus_le_r, H2.
+  Qed.
+
   Definition Qapprox_w_den (x : R) (den : positive) : Q :=
     (let den' := Z.pos den # 1 in
       Qfloor (Qapprox x (2 * den') * den' + (1 # 2)) # den)%Q.

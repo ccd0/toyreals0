@@ -45,7 +45,7 @@ Module RE.
   Definition value_in (xs ys : estimate) : Prop :=
     min ys <= value xs <= max ys.
 
-  Lemma average_between :
+  Theorem average_between :
     forall x y, x <= y -> x <= (x + y) / 2 <= y.
   Proof.
     intros x y H.
@@ -211,7 +211,7 @@ Module R.
     apply compute_consistent.
   Defined.
 
-  Lemma bound_diff_control_u :
+  Theorem bound_diff_control_u :
     (forall x d t, 0 < d -> 2 / d < t ->
       upper_bound x t < lower_bound x t + d)%Q.
   Proof.
@@ -234,7 +234,7 @@ Module R.
       field_simplify; trivial.
   Qed.
 
-  Lemma bound_diff_control_l :
+  Theorem bound_diff_control_l :
     (forall x d t, 0 < d -> 2 / d < t ->
       upper_bound x t - d < lower_bound x t)%Q.
   Proof.
@@ -244,7 +244,7 @@ Module R.
     apply bound_diff_control_u; trivial.
   Qed.
 
-  Lemma not_both_in_bounds :
+  Theorem not_both_in_bounds :
     (forall x y z, x < y ->
       let t := 4 / (y - x) in
         y <= upper_bound z t -> x < lower_bound z t)%Q.
@@ -529,7 +529,7 @@ Module R.
     Definition plus2 (x y : R) (t : Q) : RE.estimate :=
       (plus1 (R.compute x (2 * t)) (R.compute y (2 * t)))%Q.
 
-    Lemma errors_correct :
+    Theorem errors_correct :
       Proper (RE.point_in ==> RE.point_in ==> RE.value_in) plus1.
     Proof.
       intros _ _ [x [x0 dx] Hx] _ _ [y [y0 dy] Hy].
@@ -541,7 +541,7 @@ Module R.
       split; apply Qplus_le_compat; tauto.
     Qed.
 
-    Lemma compatible : Proper (eqv ==> eqv ==> RE.eqv) plus2.
+    Theorem compatible : Proper (eqv ==> eqv ==> RE.eqv) plus2.
     Proof.
       apply errors_correct_compatible2, errors_correct.
     Qed.

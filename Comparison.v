@@ -9,7 +9,7 @@ Local Open Scope R_scope.
 Definition is_Rlt_witness (x y : R) (tx ty : Q) : Prop :=
   (R.upper_bound x tx < R.lower_bound y ty)%Q.
 
-Lemma Rlt_same_witness :
+Theorem Rlt_same_witness :
   forall x y tx ty,
     is_Rlt_witness x y tx ty ->
       forall t, (8 / (R.lower_bound y ty - R.upper_bound x tx) <= t)%Q ->
@@ -36,7 +36,7 @@ Proof.
   - apply R.bound_diff_control_l; trivial.
 Qed.
 
-Lemma Rlt_same_witness_exists :
+Theorem Rlt_same_witness_exists :
   forall x y, x < y ->
     exists t, forall t2, (t <= t2)%Q -> is_Rlt_witness x y t2 t2.
 Proof.
@@ -51,7 +51,7 @@ Definition wlog2 (t : Q) : nat :=
 Definition wpow2 (n : nat) : Q :=
   inject_Z (Z.of_nat (2 ^ n)).
 
-Lemma wlog2_spec :
+Theorem wlog2_spec :
   forall t, (t <= wpow2 (wlog2 t))%Q.
 Proof.
   intro t.
@@ -74,7 +74,7 @@ Qed.
 Definition Qlt_bool (x y : Q) :=
   (Qnum x * QDen y <? Qnum y * QDen x)%Z.
 
-Lemma Qlt_bool_iff : forall x y : Q, Qlt_bool x y = true <-> (x < y)%Q.
+Theorem Qlt_bool_iff : forall x y : Q, Qlt_bool x y = true <-> (x < y)%Q.
 Proof.
   intros x y.
   apply Z.ltb_lt.
@@ -84,7 +84,7 @@ Definition Rcan_discriminate (x y : R) (n : nat) : bool :=
   Qlt_bool (R.upper_bound x (wpow2 n)) (R.lower_bound y (wpow2 n)) ||
   Qlt_bool (R.upper_bound y (wpow2 n)) (R.lower_bound x (wpow2 n)).
 
-Lemma Rcan_discriminate_spec :
+Theorem Rcan_discriminate_spec :
   forall x y n,
     Rcan_discriminate x y n = true <->
       is_Rlt_witness x y (wpow2 n) (wpow2 n) \/
@@ -96,7 +96,7 @@ Proof.
   tauto.
 Qed.
 
-Lemma Rcan_discriminate_exists :
+Theorem Rcan_discriminate_exists :
   forall x y, x =/= y -> exists n, Rcan_discriminate x y n = true.
 Proof.
   intros x y [H|H];
@@ -114,7 +114,7 @@ Definition find_discriminating_power (x y : R) (p : x =/= y) : nat :=
     (fun n => bool_dec (Rcan_discriminate x y n) true)
     (Rcan_discriminate_exists x y p).
 
-Lemma find_discriminating_power_spec :
+Theorem find_discriminating_power_spec :
   forall x y p, Rcan_discriminate x y (find_discriminating_power x y p) = true.
 Proof.
   intros x y p.

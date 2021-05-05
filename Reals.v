@@ -720,8 +720,8 @@ Module R.
 
     Definition plus1 (x y : RE.estimate) : RE.estimate :=
       RE.make
-        (Qred (RE.value x + RE.value y))
-        (Qred (RE.error x + RE.error y)).
+        (RE.value x + RE.value y)
+        (RE.error x + RE.error y).
 
     Definition plus2 (x y : R) (t : Q) : RE.estimate :=
       (plus1 (R.compute x (2 * t)) (R.compute y (2 * t)))%Q.
@@ -731,8 +731,7 @@ Module R.
     Proof.
       intros _ _ [x [x0 dx] Hx] _ _ [y [y0 dy] Hy].
       unfold RE.value_in, RE.min, RE.max in *.
-      cbn - [Qred] in *.
-      repeat rewrite Qred_correct.
+      cbn in *.
       setoid_replace (x0 + y0 - (dx + dy))%Q with ((x0 - dx) + (y0 - dy))%Q by ring.
       setoid_replace (x0 + y0 + (dx + dy))%Q with ((x0 + dx) + (y0 + dy))%Q by ring.
       split; apply Qplus_le_compat; tauto.
@@ -752,8 +751,7 @@ Module R.
     Theorem meets_target : forall x y, RE.meets_target (plus2 x y).
     Proof.
       intros x y t.
-      cbn - [Qred].
-      rewrite Qred_correct.
+      cbn.
       pose (R.compute_meets_target x (2 * t))%Q as Hx.
       pose (R.compute_meets_target y (2 * t))%Q as Hy.
       apply (Qmult_le_l _ _ 2); [reflexivity|].
@@ -779,9 +777,6 @@ Module R.
     intros x y.
     apply Qapprox_Qeq_eqv.
     intro t.
-    unfold plus, plus.plus2, plus.plus1.
-    cbn - [Qred].
-    repeat rewrite Qred_correct.
     apply Qplus_comm.
   Qed.
 

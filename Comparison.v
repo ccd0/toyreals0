@@ -6,20 +6,21 @@ Require Import Coq.Logic.ConstructiveEpsilon.
 Global Close Scope Q_scope.
 
 Local Open Scope R_scope.
+Import R.
 
-Definition is_Rlt_witness (x y : R) (tx ty : Q) : Prop :=
-  (R.upper_bound x tx < R.lower_bound y ty)%Q.
+Definition is_lt_witness (x y : R) (tx ty : Q) : Prop :=
+  (upper_bound x tx < lower_bound y ty)%Q.
 
-Theorem Rlt_same_witness :
+Theorem lt_same_witness :
   forall x y tx ty,
-    is_Rlt_witness x y tx ty ->
-      forall t, (8 / (R.lower_bound y ty - R.upper_bound x tx) <= t)%Q ->
-        is_Rlt_witness x y t t.
+    is_lt_witness x y tx ty ->
+      forall t, (8 / (lower_bound y ty - upper_bound x tx) <= t)%Q ->
+        is_lt_witness x y t t.
 Proof.
   intros x y tx ty H t Ht.
-  unfold is_Rlt_witness in *.
-  set (a := R.upper_bound x tx) in *.
-  set (b := R.lower_bound y ty) in *.
+  unfold is_lt_witness in *.
+  set (a := upper_bound x tx) in *.
+  set (b := lower_bound y ty) in *.
   apply Qlt_minus_iff in H.
   apply (Qlt_le_trans (4 / (b - a))) in Ht;
     [|apply Qmult_lt_r; [apply Qinv_lt_0_compat, H|reflexivity]].
@@ -27,23 +28,23 @@ Proof.
     by (field; apply Qnot_eq_sym, Qlt_not_eq, H).
   apply (Qmult_lt_r _ _ (/ 2)) in H; [|reflexivity].
   rewrite Qmult_0_l in H.
-  apply (Qlt_trans _ (R.lower_bound x t + (b - a) / 2)),
+  apply (Qlt_trans _ (lower_bound x t + (b - a) / 2)),
     (Qle_lt_trans _ (a + (b - a) / 2)),
-    (Qle_lt_trans _ (R.upper_bound y t - (b - a) / 2)).
-  - apply R.bound_diff_control_u; trivial.
-  - apply Qplus_le_l, R.compute_consistent.
+    (Qle_lt_trans _ (upper_bound y t - (b - a) / 2)).
+  - apply bound_diff_control_u; trivial.
+  - apply Qplus_le_l, compute_consistent.
   - setoid_replace (a + (b - a) / 2)%Q with (b - (b - a) / 2)%Q by field.
-    apply Qplus_le_l, R.compute_consistent.
-  - apply R.bound_diff_control_l; trivial.
+    apply Qplus_le_l, compute_consistent.
+  - apply bound_diff_control_l; trivial.
 Qed.
 
-Theorem Rlt_same_witness_exists :
+Theorem lt_same_witness_exists :
   forall x y, x < y ->
-    exists t, forall t2, (t <= t2)%Q -> is_Rlt_witness x y t2 t2.
+    exists t, forall t2, (t <= t2)%Q -> is_lt_witness x y t2 t2.
 Proof.
   intros x y [tx [ty H]].
-  exists (8 / (R.lower_bound y ty - R.upper_bound x tx))%Q.
-  apply Rlt_same_witness, H.
+  exists (8 / (lower_bound y ty - upper_bound x tx))%Q.
+  apply lt_same_witness, H.
 Defined.
 
 Definition keep_pos (x : Q) : Q :=
@@ -90,67 +91,67 @@ Proof.
 Qed.
 
 Definition init_discriminating_power (x y : R) : Q :=
-  (Qmax (RE.error (R.compute x 0)) (RE.error (R.compute y 0)))%Q.
+  (Qmax (RE.error (compute x 0)) (RE.error (compute y 0)))%Q.
 
-Definition Rcan_discriminate (x y : R) (n : nat) : bool :=
+Definition can_discriminate (x y : R) (n : nat) : bool :=
   let t := wpow2 n (init_discriminating_power x y) in
-    Qlt_bool (R.upper_bound x t) (R.lower_bound y t) ||
-    Qlt_bool (R.upper_bound y t) (R.lower_bound x t).
+    Qlt_bool (upper_bound x t) (lower_bound y t) ||
+    Qlt_bool (upper_bound y t) (lower_bound x t).
 
-Theorem Rcan_discriminate_spec :
+Theorem can_discriminate_spec :
   forall x y n,
-    Rcan_discriminate x y n = true <->
+    can_discriminate x y n = true <->
       let t := wpow2 n (init_discriminating_power x y) in
-        is_Rlt_witness x y t t \/
-        is_Rlt_witness y x t t.
+        is_lt_witness x y t t \/
+        is_lt_witness y x t t.
 Proof.
   intros x y t.
-  unfold Rcan_discriminate, is_Rlt_witness.
+  unfold can_discriminate, is_lt_witness.
   rewrite orb_true_iff, Qlt_bool_iff, Qlt_bool_iff.
   tauto.
 Qed.
 
-Theorem Rcan_discriminate_exists :
+Theorem can_discriminate_exists :
   forall x y, x =/= y ->
-    exists n, Rcan_discriminate x y n = true.
+    exists n, can_discriminate x y n = true.
 Proof.
   intros x y [H|H];
-    apply Rlt_same_witness_exists in H;
+    apply lt_same_witness_exists in H;
     destruct H as [t H];
     exists (wlog2 t (init_discriminating_power x y));
-    apply Rcan_discriminate_spec;
+    apply can_discriminate_spec;
     [left|right];
     apply H, wlog2_spec.
 Defined.
 
 Definition find_discriminating_power (x y : R) (p : x =/= y) : nat :=
   constructive_ground_epsilon_nat
-    (fun n => Rcan_discriminate x y n = true)
-    (fun n => bool_dec (Rcan_discriminate x y n) true)
-    (Rcan_discriminate_exists x y p).
+    (fun n => can_discriminate x y n = true)
+    (fun n => bool_dec (can_discriminate x y n) true)
+    (can_discriminate_exists x y p).
 
 Theorem find_discriminating_power_spec :
-  forall x y p, Rcan_discriminate x y (find_discriminating_power x y p) = true.
+  forall x y p, can_discriminate x y (find_discriminating_power x y p) = true.
 Proof.
   intros x y p.
   unfold find_discriminating_power.
   apply constructive_ground_epsilon_spec_nat.
 Qed.
 
-Definition Rlt_bool (x y : R) (p : x =/= y) : bool :=
+Definition lt_bool (x y : R) (p : x =/= y) : bool :=
   let t := wpow2 (find_discriminating_power x y p) (init_discriminating_power x y) in
-    Qlt_bool (R.upper_bound x t) (R.lower_bound y t).
+    Qlt_bool (upper_bound x t) (lower_bound y t).
 
-Theorem Rlt_bool_spec :
-  forall x y p, if Rlt_bool x y p then x < y else y < x.
+Theorem lt_bool_spec :
+  forall x y p, if lt_bool x y p then x < y else y < x.
 Proof.
   intros x y p.
-  destruct (Rlt_bool x y p) eqn:E;
+  destruct (lt_bool x y p) eqn:E;
     repeat exists (wpow2 (find_discriminating_power x y p) (init_discriminating_power x y)).
   - apply Qlt_bool_iff, E.
   - pose (find_discriminating_power_spec x y p) as H.
-    unfold Rlt_bool in E.
-    unfold Rcan_discriminate in H.
+    unfold lt_bool in E.
+    unfold can_discriminate in H.
     rewrite E, orb_false_l in H.
     apply Qlt_bool_iff, H.
 Defined.

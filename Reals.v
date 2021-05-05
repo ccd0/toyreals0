@@ -628,6 +628,60 @@ Module R.
       apply Qle_refl.
   Qed.
 
+  Module increase_target_accuracy. Section params.
+
+    Variable f : Q -> Q.
+    Hypothesis increases : (forall t, 0 < t -> t <= f t)%Q.
+    Variable x : R.
+
+    Theorem consistent : RE.consistent (fun t => compute x (f t)).
+    Proof.
+      intros t1 t2.
+      apply compute_consistent.
+    Qed.
+
+    Theorem meets_target : RE.meets_target (fun t => compute x (f t)).
+    Proof.
+      intro t.
+      destruct (Qlt_le_dec 0 t) as [H|H].
+      - apply (Qle_trans _ ((f t) * RE.error (compute x (f t)))).
+        + apply Qmult_le_compat_r.
+          * apply increases, H.
+          * apply RE.consistent_error_nonneg, compute_consistent.
+        + apply compute_meets_target.
+      - apply (Qle_trans _ (0 * RE.error (compute x (f t)))).
+        + apply Qmult_le_compat_r; trivial.
+          apply RE.consistent_error_nonneg, compute_consistent.
+        + discriminate.
+    Qed.
+
+  End params. End increase_target_accuracy.
+
+  Definition increase_target_accuracy
+    (f : Q -> Q) (p : forall t, (0 < t -> t <= f t)%Q) (x : R)
+  :=
+    make
+      (fun t => compute x (f t))
+      (increase_target_accuracy.consistent f x)
+      (increase_target_accuracy.meets_target f p x).
+
+  Theorem increase_target_accuracy_spec :
+    forall f p x, x == increase_target_accuracy f p x.
+  Proof.
+    intros f p x.
+    split; intros t1 t2; apply (compute_consistent x).
+  Qed.
+
+  Add Parametric Morphism f p :
+    (increase_target_accuracy f p)
+    with signature (eqv ==> eqv)
+    as increase_target_accuracy_mor.
+  Proof.
+    intros x y H.
+    repeat rewrite <- increase_target_accuracy_spec.
+    exact H.
+  Qed.
+
   Theorem lower_bound_spec :
     forall x t, ofQ (lower_bound x t) <= x.
   Proof.
@@ -778,6 +832,23 @@ Module R.
     apply Qapprox_Qeq_eqv.
     intro t.
     apply Qplus_comm.
+  Qed.
+
+  Theorem Qdouble_incr : (forall t, 0 < t -> t <= 2 * t)%Q.
+  Proof.
+    intros t H.
+    rewrite <- (Qmult_1_l t) at 1.
+    apply Qmult_le_r; trivial; discriminate.
+  Qed.
+
+  Theorem plus_assoc : forall x y z, x + (y + z) == (x + y) + z.
+  Proof.
+    intros x y z.
+    rewrite (increase_target_accuracy_spec (fun t => 2 * t)%Q Qdouble_incr x) at 1.
+    rewrite (increase_target_accuracy_spec (fun t => 2 * t)%Q Qdouble_incr z) at 2.
+    apply Qapprox_Qeq_eqv.
+    intro t.
+    apply Qplus_assoc.
   Qed.
 
   Theorem ofQ_plus : forall x y, ofQ (x + y) == ofQ x + ofQ y.

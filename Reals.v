@@ -774,6 +774,17 @@ Module R.
     apply plus.compatible.
   Qed.
 
+  Theorem plus_comm : forall x y, x + y == y + x.
+  Proof.
+    intros x y.
+    apply Qapprox_Qeq_eqv.
+    intro t.
+    unfold plus, plus.plus2, plus.plus1.
+    cbn - [Qred].
+    repeat rewrite Qred_correct.
+    apply Qplus_comm.
+  Qed.
+
   Theorem ofQ_plus : forall x y, ofQ (x + y) == ofQ x + ofQ y.
   Proof.
     intros x y.

@@ -1,6 +1,7 @@
 Require Import ToyReals.Reals.
 Require Import Coq.QArith.QArith.
 Require Import Coq.QArith.Qround.
+Require Import Coq.QArith.Qminmax.
 Require Import Coq.Logic.ConstructiveEpsilon.
 Global Close Scope Q_scope.
 
@@ -45,30 +46,38 @@ Proof.
   apply Rlt_same_witness, H.
 Defined.
 
-Definition wlog2 (t : Q) : nat :=
-  Nat.log2_up (Z.to_nat (Z.max 2 (Qceiling t))).
+Definition keep_pos (x : Q) : Q :=
+  if Qlt_le_dec 0 x then x else 1.
 
-Definition wpow2 (n : nat) : Q :=
-  inject_Z (Z.of_nat (2 ^ n)).
+Theorem keep_pos_spec : (forall x, 0 < keep_pos x)%Q.
+Proof.
+  intro x.
+  unfold keep_pos.
+  destruct (Qlt_le_dec 0 x) as [H|H].
+  - exact H.
+  - reflexivity.
+Qed.
+
+Definition wlog2 (t err0 : Q) : nat :=
+  Z.to_nat (Z.log2_up (Qceiling (t * (keep_pos err0)))).
+
+Definition wpow2 (n : nat) (err0 : Q) : Q :=
+  inject_Z (2 ^ Z.of_nat n) / (keep_pos err0).
 
 Theorem wlog2_spec :
-  forall t, (t <= wpow2 (wlog2 t))%Q.
+  forall t err0, (t <= wpow2 (wlog2 t err0) err0)%Q.
 Proof.
-  intro t.
+  intros t err0.
   unfold wpow2, wlog2.
-  apply (Qle_trans _ (inject_Z (Qceiling t))); [apply Qle_ceiling|].
+  rewrite Z2Nat.id by apply Z.log2_up_nonneg.
+  apply Qle_shift_div_l; [apply keep_pos_spec|].
+  apply (Qle_trans _ (inject_Z (Qceiling (t * keep_pos err0))));
+    [apply Qle_ceiling|].
   rewrite <- Zle_Qle.
-  apply (Z.le_trans _ (Z.max 2 (Qceiling t))); [apply Z.le_max_r|].
-  assert (0 <= Z.max 2 (Qceiling t))%Z as H
-    by (apply (Z.le_trans _ (Z.max 0 (Qceiling t)));
-      [apply Z.le_max_l|apply Z.max_le_compat_r; discriminate]).
-  rewrite <- (Z2Nat.id (Z.max 2 (Qceiling t))) at 1 by apply H.
-  apply inj_le.
-  apply Nat.log2_up_spec.
-  apply (Nat.lt_le_trans _ 2); auto.
-  change (Z.to_nat 2 <= Z.to_nat (Z.max 2 (Qceiling t)))%nat.
-  apply Z2Nat.inj_le; trivial; try discriminate.
-  apply Z.le_max_l.
+  destruct (Z_lt_le_dec 0 (Qceiling (t * keep_pos err0))) as [H|H].
+  - apply Z.log2_log2_up_spec, H.
+  - rewrite Z.log2_up_nonpos; trivial.
+    apply (Z.le_trans _ 0); trivial; discriminate.
 Qed.
 
 Definition Qlt_bool (x y : Q) :=
@@ -80,15 +89,20 @@ Proof.
   apply Z.ltb_lt.
 Qed.
 
+Definition init_discriminating_power (x y : R) : Q :=
+  (Qmax (RE.error (R.compute x 0)) (RE.error (R.compute y 0)))%Q.
+
 Definition Rcan_discriminate (x y : R) (n : nat) : bool :=
-  Qlt_bool (R.upper_bound x (wpow2 n)) (R.lower_bound y (wpow2 n)) ||
-  Qlt_bool (R.upper_bound y (wpow2 n)) (R.lower_bound x (wpow2 n)).
+  let t := wpow2 n (init_discriminating_power x y) in
+    Qlt_bool (R.upper_bound x t) (R.lower_bound y t) ||
+    Qlt_bool (R.upper_bound y t) (R.lower_bound x t).
 
 Theorem Rcan_discriminate_spec :
   forall x y n,
     Rcan_discriminate x y n = true <->
-      is_Rlt_witness x y (wpow2 n) (wpow2 n) \/
-      is_Rlt_witness y x (wpow2 n) (wpow2 n).
+      let t := wpow2 n (init_discriminating_power x y) in
+        is_Rlt_witness x y t t \/
+        is_Rlt_witness y x t t.
 Proof.
   intros x y t.
   unfold Rcan_discriminate, is_Rlt_witness.
@@ -97,12 +111,13 @@ Proof.
 Qed.
 
 Theorem Rcan_discriminate_exists :
-  forall x y, x =/= y -> exists n, Rcan_discriminate x y n = true.
+  forall x y, x =/= y ->
+    exists n, Rcan_discriminate x y n = true.
 Proof.
   intros x y [H|H];
     apply Rlt_same_witness_exists in H;
     destruct H as [t H];
-    exists (wlog2 t);
+    exists (wlog2 t (init_discriminating_power x y));
     apply Rcan_discriminate_spec;
     [left|right];
     apply H, wlog2_spec.
@@ -123,15 +138,15 @@ Proof.
 Qed.
 
 Definition Rlt_bool (x y : R) (p : x =/= y) : bool :=
-  let n := find_discriminating_power x y p in
-    Qlt_bool (R.upper_bound x (wpow2 n)) (R.lower_bound y (wpow2 n)).
+  let t := wpow2 (find_discriminating_power x y p) (init_discriminating_power x y) in
+    Qlt_bool (R.upper_bound x t) (R.lower_bound y t).
 
 Theorem Rlt_bool_spec :
   forall x y p, if Rlt_bool x y p then x < y else y < x.
 Proof.
   intros x y p.
   destruct (Rlt_bool x y p) eqn:E;
-    repeat exists (wpow2 (find_discriminating_power x y p)).
+    repeat exists (wpow2 (find_discriminating_power x y p) (init_discriminating_power x y)).
   - apply Qlt_bool_iff, E.
   - pose (find_discriminating_power_spec x y p) as H.
     unfold Rlt_bool in E.

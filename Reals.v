@@ -211,41 +211,51 @@ Module R.
     apply compute_consistent.
   Defined.
 
-  Lemma eventual_not_both :
-    (forall x y z t, x < y -> 2 / (y - x) < t ->
-      y <= upper_bound z t -> x < lower_bound z t)%Q.
+  Lemma bound_diff_control_u :
+    (forall x d t, 0 < d -> 2 / d < t ->
+      upper_bound x t < lower_bound x t + d)%Q.
   Proof.
-    intros x y z t H1 H2 H3.
-    apply Qnot_le_lt.
-    intro H4.
-    apply (Qplus_lt_l _ _ (-x)) in H1.
-    rewrite Qplus_opp_r in H1.
-    apply Qopp_le_compat in H4.
-    apply (Qplus_le_compat _ _ _ _ H3) in H4.
-    setoid_replace (upper_bound z t + - lower_bound z t)%Q
-      with (2 * RE.error (compute z t))%Q in H4
-      by (unfold upper_bound, lower_bound, RE.min, RE.max; ring).
-    assert (0 < 2 / (y - x))%Q as H5
-      by (apply Qlt_shift_div_l; trivial; ring_simplify; reflexivity).
-    assert (0 < t)%Q as H6
-      by (apply (Qlt_trans _ (2 / (y - x))); trivial).
-    contradict H2.
-    apply Qle_not_lt.
-    apply Qle_shift_div_l; trivial.
-    apply (Qle_trans _ (2 * (t * RE.error (compute z t)))).
-    - setoid_replace (2 * (t * RE.error (compute z t)))%Q
-        with (t * (2 * RE.error (compute z t)))%Q by ring.
-      apply Qmult_le_l; trivial.
-    - apply (Qmult_le_l _ 1 2); [reflexivity|].
-      apply compute_meets_target.
+    intros x d t Hd Ht.
+    unfold lower_bound, upper_bound, RE.min, RE.max.
+    unfold Qminus.
+    rewrite <- Qplus_assoc.
+    apply Qplus_lt_r.
+    apply (Qplus_lt_l _ _ (RE.error (compute x t))).
+    apply (Qmult_lt_l _ _ (1 # 2)); [reflexivity|].
+    ring_simplify.
+    apply (Qmult_lt_l _ _ t); trivial.
+    - apply (Qlt_trans _ (2 / d)); trivial.
+      apply Qlt_shift_div_l; trivial.
+      reflexivity.
+    - apply (Qle_lt_trans _ 1); [apply compute_meets_target|].
+      apply (Qmult_lt_l _ _ 2); [reflexivity|].
+      apply (Qmult_lt_r _ _ (/ d)); [apply Qinv_lt_0_compat, Hd|].
+      apply Qlt_not_eq, Qnot_eq_sym in Hd.
+      field_simplify; trivial.
   Qed.
 
-  Lemma Qplus1_gt : (forall x, x < x + 1)%Q.
+  Lemma bound_diff_control_l :
+    (forall x d t, 0 < d -> 2 / d < t ->
+      upper_bound x t - d < lower_bound x t)%Q.
   Proof.
-    intro x.
-    rewrite <- (Qplus_0_r x) at 1.
-    apply Qplus_lt_r.
-    reflexivity.
+    intros x d t Hd Ht.
+    apply (Qplus_lt_l _ _ d).
+    setoid_replace (upper_bound x t - d + d)%Q with (upper_bound x t) by ring.
+    apply bound_diff_control_u; trivial.
+  Qed.
+
+  Lemma not_both_in_bounds :
+    (forall x y z, x < y ->
+      let t := 4 / (y - x) in
+        y <= upper_bound z t -> x < lower_bound z t)%Q.
+  Proof.
+    intros x y z H1 t H2.
+    apply Qlt_minus_iff in H1.
+    setoid_replace x with (y - (y - x))%Q by ring.
+    apply (Qle_lt_trans _ (upper_bound z t - (y - x))).
+      - apply Qplus_le_l, H2.
+      - apply bound_diff_control_l; trivial.
+        apply Qmult_lt_r; [apply Qinv_lt_0_compat, H1|reflexivity].
   Qed.
 
   Theorem lt_or : forall x y z, x < y -> z < y \/ x < z.
@@ -253,15 +263,14 @@ Module R.
     intros x y z [t1 [t2 H]].
     set (a := upper_bound x t1) in *.
     set (b := lower_bound y t2) in *.
-    set (t := (2 / (b - a) + 1)%Q).
+    set (t := (4 / (b - a))%Q).
     destruct (Qlt_le_dec (upper_bound z t) b) as [H2|H2].
     - left.
       exists t, t2.
       trivial.
     - right.
       exists t1, t.
-      apply (eventual_not_both a b); trivial.
-      apply Qplus1_gt.
+      apply (not_both_in_bounds a b); trivial.
   Defined.
 
   Theorem le_trans : forall x y z, x <= y -> y <= z -> x <= z.

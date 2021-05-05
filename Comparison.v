@@ -9,65 +9,40 @@ Local Open Scope R_scope.
 Definition is_Rlt_witness (x y : R) (tx ty : Q) : Prop :=
   (R.upper_bound x tx < R.lower_bound y ty)%Q.
 
-Definition Rlt_witness_make_same (x y : R) (tx ty : Q) : Q :=
-  (8 / (R.lower_bound y ty - R.upper_bound x tx))%Q.
-
-Lemma Rlt_witness_make_same_spec :
+Lemma Rlt_same_witness :
   forall x y tx ty,
     is_Rlt_witness x y tx ty ->
-      forall t, (Rlt_witness_make_same x y tx ty <= t)%Q ->
+      forall t, (8 / (R.lower_bound y ty - R.upper_bound x tx) <= t)%Q ->
         is_Rlt_witness x y t t.
 Proof.
   intros x y tx ty H t Ht.
-  unfold is_Rlt_witness.
-  setoid_replace (R.upper_bound x t)
-    with (R.lower_bound x t + 2 * RE.error (R.compute x t))%Q
-    by (unfold R.upper_bound, R.lower_bound, RE.min, RE.max; ring).
-  setoid_replace (R.lower_bound y t)
-    with (R.upper_bound y t - 2 * RE.error (R.compute y t))%Q
-    by (unfold R.upper_bound, R.lower_bound, RE.min, RE.max; ring).
-  apply (Qle_lt_trans _ (R.upper_bound x tx + 2 * RE.error (R.compute x t)));
-    [apply Qplus_le_l, R.compute_consistent|].
-  apply (Qlt_le_trans _ (R.lower_bound y ty - 2 * RE.error (R.compute y t)));
-    [|apply Qplus_le_l, R.compute_consistent].
-  apply (Qplus_lt_l _ _ (2 * RE.error (R.compute y t) - R.upper_bound x tx)).
-  apply (Qmult_lt_l _ _ (1 # 2)); [reflexivity|].
-  ring_simplify.
-  setoid_replace ((-1 # 2) * R.upper_bound x tx + (1 # 2) * R.lower_bound y ty)%Q
-    with ((R.lower_bound y ty - R.upper_bound x tx) / 2)%Q by field.
-  unfold Rlt_witness_make_same in Ht.
-  cbn in Ht.
-  set (z := (R.lower_bound y ty - R.upper_bound x tx)%Q) in *.
-  assert (z > 0)%Q as Hz.
-  - subst z.
-    setoid_rewrite <- (Qplus_opp_r (R.upper_bound x tx)).
-    apply Qplus_lt_l.
-    apply H.
-  - apply (Qmult_lt_l _ _ t).
-    + apply (Qlt_le_trans _ (8 / z)); trivial.
-      apply Qlt_shift_div_l; trivial.
-      reflexivity.
-    + ring_simplify.
-      apply (Qle_lt_trans _ (1 + t * RE.error (R.compute y t)));
-        [apply Qplus_le_l, R.compute_meets_target|].
-      apply (Qle_lt_trans _ (1 + 1));
-        [apply Qplus_le_r, R.compute_meets_target|].
-      apply (Qmult_le_r _ _ (z / 2)) in Ht;
-        [|rewrite <- (Qmult_0_l (/ 2)); apply Qmult_lt_r; trivial; reflexivity].
-      apply (Qlt_le_trans _ (8 / z * (z / 2))), Ht.
-      field_simplify; try reflexivity.
-      intro Hz2.
-      rewrite Hz2 in Hz.
-      discriminate.
+  unfold is_Rlt_witness in *.
+  set (a := R.upper_bound x tx) in *.
+  set (b := R.lower_bound y ty) in *.
+  apply Qlt_minus_iff in H.
+  apply (Qlt_le_trans (4 / (b - a))) in Ht;
+    [|apply Qmult_lt_r; [apply Qinv_lt_0_compat, H|reflexivity]].
+  setoid_replace (4 / (b - a))%Q with (2 / ((b - a) / 2))%Q in Ht
+    by (field; apply Qnot_eq_sym, Qlt_not_eq, H).
+  apply (Qmult_lt_r _ _ (/ 2)) in H; [|reflexivity].
+  rewrite Qmult_0_l in H.
+  apply (Qlt_trans _ (R.lower_bound x t + (b - a) / 2)),
+    (Qle_lt_trans _ (a + (b - a) / 2)),
+    (Qle_lt_trans _ (R.upper_bound y t - (b - a) / 2)).
+  - apply R.bound_diff_control_u; trivial.
+  - apply Qplus_le_l, R.compute_consistent.
+  - setoid_replace (a + (b - a) / 2)%Q with (b - (b - a) / 2)%Q by field.
+    apply Qplus_le_l, R.compute_consistent.
+  - apply R.bound_diff_control_l; trivial.
 Qed.
 
-Lemma Rlt_exists_same_witness :
+Lemma Rlt_same_witness_exists :
   forall x y, x < y ->
     exists t, forall t2, (t <= t2)%Q -> is_Rlt_witness x y t2 t2.
 Proof.
   intros x y [tx [ty H]].
-  exists (Rlt_witness_make_same x y tx ty).
-  apply Rlt_witness_make_same_spec, H.
+  exists (8 / (R.lower_bound y ty - R.upper_bound x tx))%Q.
+  apply Rlt_same_witness, H.
 Defined.
 
 Definition wlog2 (t : Q) : nat :=
@@ -125,7 +100,7 @@ Lemma Rcan_discriminate_exists :
   forall x y, x =/= y -> exists n, Rcan_discriminate x y n = true.
 Proof.
   intros x y [H|H];
-    apply Rlt_exists_same_witness in H;
+    apply Rlt_same_witness_exists in H;
     destruct H as [t H];
     exists (wlog2 t);
     apply Rcan_discriminate_spec;

@@ -829,8 +829,7 @@ Module R.
   Theorem plus_comm : forall x y, x + y == y + x.
   Proof.
     intros x y.
-    apply Qapprox_Qeq_eqv.
-    intro t.
+    apply Qapprox_Qeq_eqv; intro t.
     apply Qplus_comm.
   Qed.
 
@@ -846,9 +845,23 @@ Module R.
     intros x y z.
     rewrite (increase_target_accuracy_spec (fun t => 2 * t)%Q Qdouble_incr x) at 1.
     rewrite (increase_target_accuracy_spec (fun t => 2 * t)%Q Qdouble_incr z) at 2.
-    apply Qapprox_Qeq_eqv.
-    intro t.
+    apply Qapprox_Qeq_eqv; intro t.
     apply Qplus_assoc.
+  Qed.
+
+  Theorem plus_0_r : forall x, x + ofQ 0 == x.
+  Proof.
+    intro x.
+    rewrite (increase_target_accuracy_spec (fun t => 2 * t)%Q Qdouble_incr x) at 2.
+    apply Qapprox_Qeq_eqv; intro t.
+    apply Qplus_0_r.
+  Qed.
+
+  Theorem plus_0_l : forall x, ofQ 0 + x == x.
+  Proof.
+    intro x.
+    rewrite plus_comm.
+    apply plus_0_r.
   Qed.
 
   Theorem ofQ_plus : forall x y, ofQ (x + y) == ofQ x + ofQ y.

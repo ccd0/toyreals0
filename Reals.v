@@ -74,6 +74,21 @@ Module RE.
     apply average_between, H.
   Qed.
 
+  Theorem consistent_error_nonneg :
+    forall x t, consistent x -> 0 <= RE.error (x t).
+  Proof.
+    intros x t H.
+    specialize (H t t).
+    destruct (x t) as [x0 dx].
+    unfold min, max in *.
+    cbn in *.
+    apply Qplus_le_r in H.
+    apply Qle_minus_iff in H.
+    ring_simplify in H.
+    apply (Qmult_le_l 0 dx 2) in H; trivial.
+    reflexivity.
+  Qed.
+
 End RE.
 
 Module R.
@@ -578,6 +593,39 @@ Module R.
   Proof.
     intros x y H.
     split; apply ofQ_le; rewrite H; apply Qle_refl.
+  Qed.
+
+  Theorem Qapprox_Qle_le :
+    forall x y, (forall t, Qapprox x t <= Qapprox y t)%Q -> x <= y.
+  Proof.
+    intros x y H.
+    apply le_not_gt.
+    intro H2.
+    apply lt_same_witness_exists in H2.
+    destruct H2 as [t H2].
+    specialize (H2 t (Qle_refl t)).
+    contradict H2.
+    unfold is_lt_witness.
+    apply Qle_not_lt.
+    change (
+      Qapprox x t - RE.error (R.compute x t) <=
+      Qapprox y t + RE.error (R.compute y t)
+    )%Q.
+    apply (Qle_trans _ (Qapprox x t)), (Qle_trans _ (Qapprox y t)); trivial;
+      apply Qle_minus_iff;
+      ring_simplify;
+      apply RE.consistent_error_nonneg, compute_consistent.
+  Qed.
+
+  Theorem Qapprox_Qeq_eqv :
+    forall x y, (forall t, Qapprox x t == Qapprox y t)%Q -> x == y.
+  Proof.
+    intros x y H.
+    split;
+      apply Qapprox_Qle_le;
+      intro t;
+      rewrite H;
+      apply Qle_refl.
   Qed.
 
   Theorem lower_bound_spec :

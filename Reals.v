@@ -913,6 +913,13 @@ Module R.
     - unfold lower_bound, RE.min, t4, t3. cbn. ring.
   Qed.
 
+  Theorem plus_lt_l : forall x y z, x < y -> z + x < z + y.
+  Proof.
+    intros x y z H.
+    rewrite (plus_comm z x), (plus_comm z y).
+    apply plus_lt_r, H.
+  Qed.
+
 End R. Export R (R).
 
 Delimit Scope R_scope with R.

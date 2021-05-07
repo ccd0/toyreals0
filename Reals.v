@@ -1011,6 +1011,18 @@ Module R.
     apply plus_le_r.
   Qed.
 
+  Definition minus (x y : R) : R :=
+    x + (- y).
+
+  Infix "-" := minus : R_scope.
+
+  Add Morphism minus with signature (eqv ==> eqv ==> eqv) as minus_mor.
+  Proof.
+    unfold minus.
+    intros.
+    repeat (f_equiv; trivial).
+  Qed.
+
 End R. Export R (R).
 
 Delimit Scope R_scope with R.
@@ -1022,3 +1034,4 @@ Notation "x > y" := (R.lt y x) (only parsing) : R_scope.
 Infix "=/=" := R.apart (no associativity, at level 70) : R_scope.
 Infix "+" := R.plus : R_scope.
 Notation "- x" := (R.opp x) : R_scope.
+Infix "-" := R.minus : R_scope.

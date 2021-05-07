@@ -969,6 +969,20 @@ Module R.
     apply opp.compatible.
   Qed.
 
+  Theorem plus_opp_r : forall x, x + (- x) == ofQ 0.
+  Proof.
+    intro x.
+    apply Qapprox_Qeq_eqv; intro t.
+    apply Qplus_opp_r.
+  Qed.
+
+  Theorem plus_opp_l : forall x, (- x) + x == ofQ 0.
+  Proof.
+    intro x.
+    rewrite plus_comm.
+    apply plus_opp_r.
+  Qed.
+
 End R. Export R (R).
 
 Delimit Scope R_scope with R.

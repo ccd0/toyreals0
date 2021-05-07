@@ -885,7 +885,7 @@ Module R.
     apply Qle_refl.
   Qed.
 
-  Theorem plus_lt_r : forall x y z, x < y -> x + z < y + z.
+  Theorem plus_lt_r_fw : forall x y z, x < y -> x + z < y + z.
   Proof.
     intros x y z [t1 [t2 H]].
     apply Qlt_minus_iff in H.
@@ -911,13 +911,6 @@ Module R.
       + apply Qmult_pos; trivial. reflexivity.
       + apply Qeq_le_weak. unfold t4, t3. field. trivial.
     - unfold lower_bound, RE.min, t4, t3. cbn. ring.
-  Qed.
-
-  Theorem plus_lt_l : forall x y z, x < y -> z + x < z + y.
-  Proof.
-    intros x y z H.
-    rewrite (plus_comm z x), (plus_comm z y).
-    apply plus_lt_r, H.
   Qed.
 
   Module opp.
@@ -981,6 +974,41 @@ Module R.
     intro x.
     rewrite plus_comm.
     apply plus_opp_r.
+  Qed.
+
+  Theorem plus_lt_r_bw : forall x y z, x + z < y + z -> x < y.
+  Proof.
+    intros x y z H.
+    apply (plus_lt_r_fw _ _ (-z)) in H.
+    rewrite <- plus_assoc, <- plus_assoc, plus_opp_r, plus_0_r, plus_0_r in H.
+    exact H.
+  Qed.
+
+  Theorem plus_lt_r : forall x y z, x < y <-> x + z < y + z.
+  Proof.
+    intros x y z.
+    split; intro H; [apply plus_lt_r_fw|apply (plus_lt_r_bw _ _ z)]; exact H.
+  Qed.
+
+  Theorem plus_lt_l : forall x y z, x < y <-> z + x < z + y.
+  Proof.
+    intros x y z.
+    rewrite (plus_comm z x), (plus_comm z y).
+    apply plus_lt_r.
+  Qed.
+
+  Theorem plus_le_r : forall x y z, x <= y <-> x + z <= y + z.
+  Proof.
+    intros x y z.
+    repeat rewrite le_not_gt.
+    apply not_iff_compat, plus_lt_r.
+  Qed.
+
+  Theorem plus_le_l : forall x y z, x <= y <-> z + x <= z + y.
+  Proof.
+    intros x y z.
+    rewrite (plus_comm z x), (plus_comm z y).
+    apply plus_le_r.
   Qed.
 
 End R. Export R (R).

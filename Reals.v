@@ -25,7 +25,7 @@ Module RE.
     forall t1 t2, min (x t1) <= max (x t2).
 
   Definition meets_target (x : estimator) : Prop :=
-    forall target_accuracy, target_accuracy * error (x target_accuracy) <= 1.
+    forall target_accuracy, target_accuracy * error (x target_accuracy) < 1.
 
   Definition le (x y : estimator) : Prop :=
     forall t1 t2, min (x t1) <= max (y t2).
@@ -128,7 +128,7 @@ Module R.
     Proof.
       intros x t.
       rewrite Qmult_0_r.
-      discriminate.
+      reflexivity.
     Qed.
 
   End ofQ.
@@ -228,7 +228,7 @@ Module R.
   Defined.
 
   Theorem bound_diff_control_u :
-    (forall x d t, 0 < d -> 2 / d < t ->
+    (forall x d t, 0 < d -> 2 / d <= t ->
       upper_bound x t < lower_bound x t + d)%Q.
   Proof.
     intros x d t Hd Ht.
@@ -240,18 +240,18 @@ Module R.
     apply (Qmult_lt_l _ _ (1 # 2)); [reflexivity|].
     ring_simplify.
     apply (Qmult_lt_l _ _ t); trivial.
-    - apply (Qlt_trans _ (2 / d)); trivial.
+    - apply (Qlt_le_trans _ (2 / d)); trivial.
       apply Qlt_shift_div_l; trivial.
       reflexivity.
-    - apply (Qle_lt_trans _ 1); [apply compute_meets_target|].
-      apply (Qmult_lt_l _ _ 2); [reflexivity|].
-      apply (Qmult_lt_r _ _ (/ d)); [apply Qinv_lt_0_compat, Hd|].
+    - apply (Qlt_le_trans _ 1); [apply compute_meets_target|].
+      apply (Qmult_le_l _ _ 2); [reflexivity|].
+      apply (Qmult_le_r _ _ (/ d)); [apply Qinv_lt_0_compat, Hd|].
       apply Qlt_not_eq, Qnot_eq_sym in Hd.
       field_simplify; trivial.
   Qed.
 
   Theorem bound_diff_control_l :
-    (forall x d t, 0 < d -> 2 / d < t ->
+    (forall x d t, 0 < d -> 2 / d <= t ->
       upper_bound x t - d < lower_bound x t)%Q.
   Proof.
     intros x d t Hd Ht.
@@ -262,7 +262,7 @@ Module R.
 
   Theorem not_both_in_bounds :
     (forall x y z, x < y ->
-      let t := 4 / (y - x) in
+      let t := 2 / (y - x) in
         y <= upper_bound z t -> x < lower_bound z t)%Q.
   Proof.
     intros x y z H1 t H2.
@@ -271,7 +271,7 @@ Module R.
     apply (Qle_lt_trans _ (upper_bound z t - (y - x))).
       - apply Qplus_le_l, H2.
       - apply bound_diff_control_l; trivial.
-        apply Qmult_lt_r; [apply Qinv_lt_0_compat, H1|reflexivity].
+        apply Qle_refl.
   Qed.
 
   Theorem lt_or : forall x y z, x < y -> z < y \/ x < z.
@@ -279,7 +279,7 @@ Module R.
     intros x y z [t1 [t2 H]].
     set (a := upper_bound x t1) in *.
     set (b := lower_bound y t2) in *.
-    set (t := (4 / (b - a))%Q).
+    set (t := (2 / (b - a))%Q).
     destruct (Qlt_le_dec (upper_bound z t) b) as [H2|H2].
     - left.
       exists t, t2.
@@ -419,7 +419,7 @@ Module R.
   Theorem lt_same_witness :
     forall x y tx ty,
       is_lt_witness x y tx ty ->
-        forall t, (8 / (lower_bound y ty - upper_bound x tx) <= t)%Q ->
+        forall t, (4 / (lower_bound y ty - upper_bound x tx) <= t)%Q ->
           is_lt_witness x y t t.
   Proof.
     intros x y tx ty H t Ht.
@@ -427,8 +427,6 @@ Module R.
     set (a := upper_bound x tx) in *.
     set (b := lower_bound y ty) in *.
     apply Qlt_minus_iff in H.
-    apply (Qlt_le_trans (4 / (b - a))) in Ht;
-      [|apply Qmult_lt_r; [apply Qinv_lt_0_compat, H|reflexivity]].
     setoid_replace (4 / (b - a))%Q with (2 / ((b - a) / 2))%Q in Ht
       by (field; apply Qnot_eq_sym, Qlt_not_eq, H).
     apply (Qmult_lt_r _ _ (/ 2)) in H; [|reflexivity].
@@ -448,7 +446,7 @@ Module R.
       exists t, forall t2, (t <= t2)%Q -> is_lt_witness x y t2 t2.
   Proof.
     intros x y [tx [ty H]].
-    exists (8 / (lower_bound y ty - upper_bound x tx))%Q.
+    exists (4 / (lower_bound y ty - upper_bound x tx))%Q.
     apply lt_same_witness, H.
   Defined.
 
@@ -644,15 +642,15 @@ Module R.
     Proof.
       intro t.
       destruct (Qlt_le_dec 0 t) as [H|H].
-      - apply (Qle_trans _ ((f t) * RE.error (compute x (f t)))).
+      - apply (Qle_lt_trans _ ((f t) * RE.error (compute x (f t)))).
         + apply Qmult_le_compat_r.
           * apply increases, H.
           * apply RE.consistent_error_nonneg, compute_consistent.
         + apply compute_meets_target.
-      - apply (Qle_trans _ (0 * RE.error (compute x (f t)))).
+      - apply (Qle_lt_trans _ (0 * RE.error (compute x (f t)))).
         + apply Qmult_le_compat_r; trivial.
           apply RE.consistent_error_nonneg, compute_consistent.
-        + discriminate.
+        + reflexivity.
     Qed.
 
   End params. End increase_target_accuracy.
@@ -706,22 +704,22 @@ Module R.
 
   Theorem Qapprox_spec :
     forall x t, (t > 0)%Q ->
-      ofQ (Qapprox x t - 1 / t) <= x /\ x <= ofQ (Qapprox x t + 1 / t).
+      ofQ (Qapprox x t - 1 / t) < x /\ x < ofQ (Qapprox x t + 1 / t).
   Proof.
     intros x t H.
-    assert (RE.error (R.compute x t) <= 1 / t)%Q as H2.
-    - apply Qle_shift_div_l; trivial.
+    assert (RE.error (R.compute x t) < 1 / t)%Q as H2.
+    - apply Qlt_shift_div_l; trivial.
       rewrite Qmult_comm.
       apply compute_meets_target.
     - split.
-      + apply (le_trans _ (ofQ (lower_bound x t))), lower_bound_spec.
-        apply ofQ_le.
+      + apply (lt_le_trans _ (ofQ (lower_bound x t))), lower_bound_spec.
+        apply ofQ_lt.
         unfold Qapprox, lower_bound, RE.min.
-        apply Qplus_le_r, Qopp_le_compat, H2.
-      + apply (le_trans _ (ofQ (upper_bound x t))); [apply upper_bound_spec|].
-        apply ofQ_le.
+        apply Qplus_lt_r, Qopp_lt_compat, H2.
+      + apply (le_lt_trans _ (ofQ (upper_bound x t))); [apply upper_bound_spec|].
+        apply ofQ_lt.
         unfold Qapprox, upper_bound, RE.max.
-        apply Qplus_le_r, H2.
+        apply Qplus_lt_r, H2.
   Qed.
 
   Definition Qapprox_w_den (x : R) (den : positive) : Q :=
@@ -808,10 +806,10 @@ Module R.
       cbn.
       pose (R.compute_meets_target x (2 * t))%Q as Hx.
       pose (R.compute_meets_target y (2 * t))%Q as Hy.
-      apply (Qmult_le_l _ _ 2); [reflexivity|].
+      apply (Qmult_lt_l _ _ 2); [reflexivity|].
       ring_simplify.
       replace 2%Q with (1 + 1)%Q at 5 by trivial.
-      apply Qplus_le_compat; trivial.
+      apply Qplus_lt_le_compat, Qlt_le_weak; trivial.
     Qed.
 
   End plus.

@@ -920,6 +920,55 @@ Module R.
     apply plus_lt_r, H.
   Qed.
 
+  Module opp.
+
+    Definition opp1 (x : RE.estimate) : RE.estimate :=
+      RE.make (- RE.value x) (RE.error x).
+
+    Definition opp2 (x : R) (t : Q) : RE.estimate :=
+      opp1 (R.compute x t).
+
+    Theorem errors_correct :
+      Proper (RE.point_in ==> RE.value_in) opp1.
+    Proof.
+      intros _ _ [x [x0 dx] Hx].
+      unfold RE.value_in, RE.min, RE.max in *.
+      cbn in *.
+      split;
+        [|rewrite <- (Qopp_opp dx)];
+        setoid_rewrite <- Qopp_plus;
+        apply Qopp_le_compat; tauto.
+    Qed.
+
+    Theorem compatible : Proper (eqv ==> RE.eqv) opp2.
+    Proof.
+      apply errors_correct_compatible1, errors_correct.
+    Qed.
+
+    Theorem consistent : forall x, RE.consistent (opp2 x).
+    Proof.
+      intros x t.
+      apply compatible; apply eqv_refl.
+    Qed.
+
+    Theorem meets_target : forall x, RE.meets_target (opp2 x).
+    Proof.
+      intros x t.
+      apply compute_meets_target.
+    Qed.
+
+  End opp.
+
+  Definition opp (x : R) : R :=
+    make (opp.opp2 x) (opp.consistent x) (opp.meets_target x).
+
+  Notation "- x" := (opp x) : R_scope.
+
+  Add Morphism opp with signature (eqv ==> eqv) as opp_mor.
+  Proof.
+    apply opp.compatible.
+  Qed.
+
 End R. Export R (R).
 
 Delimit Scope R_scope with R.
@@ -930,3 +979,4 @@ Infix "<" := R.lt : R_scope.
 Notation "x > y" := (R.lt y x) (only parsing) : R_scope.
 Infix "=/=" := R.apart (no associativity, at level 70) : R_scope.
 Infix "+" := R.plus : R_scope.
+Notation "- x" := (R.opp x) : R_scope.

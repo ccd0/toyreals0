@@ -2,6 +2,7 @@ Require Import Coq.QArith.QArith.
 Require Import Coq.QArith.Qround.
 Require Import Coq.QArith.Qminmax.
 Require Import Coq.Logic.ConstructiveEpsilon.
+Import Coq.QArith.QOrderedType.
 Global Close Scope Q_scope.
 
 Module RE.
@@ -868,6 +869,48 @@ Module R.
     compute - [Qred Qplus Qminus Qle].
     repeat setoid_rewrite Qred_correct.
     split; intros _ _; ring_simplify; apply Qle_refl.
+  Qed.
+
+  Theorem Qmult_pos : (forall x y, 0 < x -> 0 < y -> 0 < x * y)%Q.
+  Proof.
+    intros x y Hx Hy.
+    rewrite <- (Qmult_0_l y).
+    apply Qmult_lt_r; trivial.
+  Qed.
+
+  Theorem Qeq_le_weak : (forall x y, x == y -> x <= y)%Q.
+  Proof.
+    intros x y H.
+    rewrite H.
+    apply Qle_refl.
+  Qed.
+
+  Theorem plus_lt_r : forall x y z, x < y -> x + z < y + z.
+  Proof.
+    intros x y z [t1 [t2 H]].
+    apply Qlt_minus_iff in H.
+    set (eps := (lower_bound y t2 + - upper_bound x t1)%Q) in *.
+    apply Qlt_not_eq in H as H2. apply Qnot_eq_sym in H2.
+    set (t3 := (3 / eps)%Q).
+    set (t4 := (2 * t3)%Q).
+    exists t3, t3.
+    apply (Qlt_trans _ (lower_bound (x + z) t3 + (2 # 3) * eps)),
+      (@QOrder.eq_lt _ (lower_bound x t4 + lower_bound z t4 + (2 # 3) * eps)),
+      (Qle_lt_trans _ (upper_bound x t1 + lower_bound z t4 + (2 # 3) * eps)),
+      (@QOrder.eq_lt _ (lower_bound y t2 - (1 # 3) * eps + lower_bound z t4)),
+      (Qle_lt_trans _ (upper_bound y t4 - (1 # 3) * eps + lower_bound z t4)),
+      (@QOrder.lt_eq _ (lower_bound y t4 + lower_bound z t4)).
+    - apply bound_diff_control_u.
+      + apply Qmult_pos; trivial. reflexivity.
+      + apply Qeq_le_weak. unfold t3. field. trivial.
+    - unfold lower_bound, RE.min, t4, t3. cbn. ring.
+    - apply Qplus_le_l, Qplus_le_l, compute_consistent.
+    - unfold eps. ring.
+    - apply Qplus_le_l, Qplus_le_l, compute_consistent.
+    - apply Qplus_lt_l, bound_diff_control_l.
+      + apply Qmult_pos; trivial. reflexivity.
+      + apply Qeq_le_weak. unfold t4, t3. field. trivial.
+    - unfold lower_bound, RE.min, t4, t3. cbn. ring.
   Qed.
 
 End R. Export R (R).

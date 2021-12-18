@@ -47,32 +47,16 @@ Module RE.
   Definition value_in (xs ys : estimate) : Prop :=
     min ys <= value xs <= max ys.
 
-  Theorem average_between :
-    forall x y, x <= y -> x <= (x + y) / 2 <= y.
-  Proof.
-    intros x y H.
-    apply Qle_minus_iff in H.
-    split;
-      [apply Qle_shift_div_l|apply Qle_shift_div_r];
-      try reflexivity;
-      apply Qle_minus_iff;
-      apply (Qle_trans _ _ _ H);
-      apply Qle_minus_iff;
-      ring_simplify;
-      discriminate.
-  Qed.
-
   Definition common_point (x y : estimate) : Q :=
-    (Qmax (min x) (min y) + Qmin (max x) (max y)) / 2.
+    Qmax (min x) (min y).
 
   Theorem common_point_spec :
     forall x y, overlaps x y ->
       min x <= common_point x y <= max x /\ min y <= common_point x y <= max y.
   Proof.
     intros x y H.
-    assert (Qmax (min x) (min y) <= common_point x y <= Qmin (max x) (max y)) as G;
-      [|rewrite Q.min_glb_iff, Q.max_lub_iff in G; tauto].
-    apply average_between, H.
+    apply Q.min_glb_iff in H.
+    split; (split; [|tauto]); [apply Q.le_max_l|apply Q.le_max_r].
   Qed.
 
   Theorem consistent_error_nonneg :

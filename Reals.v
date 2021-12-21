@@ -435,35 +435,22 @@ Module R.
     apply lt_same_witness, H.
   Defined.
 
-  Definition keep_pos (x : Q) : Q :=
-    if Qlt_le_dec 0 x then x else 1.
+  Definition Qlog2_up (x : Q) : nat :=
+    Z.to_nat (Z.log2_up (Qceiling x)).
 
-  Theorem keep_pos_spec : (forall x, 0 < keep_pos x)%Q.
+  Definition Qpow2 (n : nat) : Q :=
+    inject_Z (2 ^ Z.of_nat n).
+
+  Theorem Qlog2_up_spec :
+    forall x, (x <= Qpow2 (Qlog2_up x))%Q.
   Proof.
     intro x.
-    unfold keep_pos.
-    destruct (Qlt_le_dec 0 x) as [H|H].
-    - exact H.
-    - reflexivity.
-  Qed.
-
-  Definition wlog2 (t err0 : Q) : nat :=
-    Z.to_nat (Z.log2_up (Qceiling (t * (keep_pos err0)))).
-
-  Definition wpow2 (n : nat) (err0 : Q) : Q :=
-    inject_Z (2 ^ Z.of_nat n) / (keep_pos err0).
-
-  Theorem wlog2_spec :
-    forall t err0, (t <= wpow2 (wlog2 t err0) err0)%Q.
-  Proof.
-    intros t err0.
-    unfold wpow2, wlog2.
+    unfold Qpow2, Qlog2_up.
     rewrite Z2Nat.id by apply Z.log2_up_nonneg.
-    apply Qle_shift_div_l; [apply keep_pos_spec|].
-    apply (Qle_trans _ (inject_Z (Qceiling (t * keep_pos err0))));
+    apply (Qle_trans _ (inject_Z (Qceiling x)));
       [apply Qle_ceiling|].
     rewrite <- Zle_Qle.
-    destruct (Z_lt_le_dec 0 (Qceiling (t * keep_pos err0))) as [H|H].
+    destruct (Z_lt_le_dec 0 (Qceiling x)) as [H|H].
     - apply Z.log2_log2_up_spec, H.
     - rewrite Z.log2_up_nonpos; trivial.
       apply (Z.le_trans _ 0); trivial; discriminate.
@@ -478,18 +465,30 @@ Module R.
     apply Z.ltb_lt.
   Qed.
 
+  Definition keep_pos (x : Q) : Q :=
+    if Qlt_le_dec 0 x then x else 1.
+
+  Theorem keep_pos_spec : (forall x, 0 < keep_pos x)%Q.
+  Proof.
+    intro x.
+    unfold keep_pos.
+    destruct (Qlt_le_dec 0 x) as [H|H].
+    - exact H.
+    - reflexivity.
+  Qed.
+
   Definition init_discriminating_power (x y : R) : Q :=
-    (Qmax (RE.error (compute x 0)) (RE.error (compute y 0)))%Q.
+    keep_pos (Qmax (RE.error (compute x 0)) (RE.error (compute y 0)))%Q.
 
   Definition can_discriminate (x y : R) (n : nat) : bool :=
-    let t := wpow2 n (init_discriminating_power x y) in
+    let t := (Qpow2 n / init_discriminating_power x y)%Q in
       Qlt_bool (upper_bound x t) (lower_bound y t) ||
       Qlt_bool (upper_bound y t) (lower_bound x t).
 
   Theorem can_discriminate_spec :
     forall x y n,
       can_discriminate x y n = true <->
-        let t := wpow2 n (init_discriminating_power x y) in
+        let t := (Qpow2 n / init_discriminating_power x y)%Q in
           is_lt_witness x y t t \/
           is_lt_witness y x t t.
   Proof.
@@ -506,10 +505,11 @@ Module R.
     intros x y [H|H];
       apply lt_same_witness_exists in H;
       destruct H as [t H];
-      exists (wlog2 t (init_discriminating_power x y));
+      exists (Qlog2_up (t * init_discriminating_power x y));
       apply can_discriminate_spec;
       [left|right];
-      apply H, wlog2_spec.
+      apply H, Qle_shift_div_l, Qlog2_up_spec;
+      apply keep_pos_spec.
   Defined.
 
   Definition find_discriminating_power (x y : R) (p : x =/= y) : nat :=
@@ -527,7 +527,7 @@ Module R.
   Qed.
 
   Definition lt_bool (x y : R) (p : x =/= y) : bool :=
-    let t := wpow2 (find_discriminating_power x y p) (init_discriminating_power x y) in
+    let t := (Qpow2 (find_discriminating_power x y p) / init_discriminating_power x y)%Q in
       Qlt_bool (upper_bound x t) (lower_bound y t).
 
   Theorem lt_bool_spec :
@@ -535,7 +535,7 @@ Module R.
   Proof.
     intros x y p.
     destruct (lt_bool x y p) eqn:E;
-      repeat exists (wpow2 (find_discriminating_power x y p) (init_discriminating_power x y)).
+      repeat exists (Qpow2 (find_discriminating_power x y p) / init_discriminating_power x y)%Q.
     - apply Qlt_bool_iff, E.
     - pose (find_discriminating_power_spec x y p) as H.
       unfold lt_bool in E.

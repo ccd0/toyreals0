@@ -54,3 +54,11 @@ Proof.
   exists (min x.[k]).
   apply bounds_min_elem.
 Qed.
+
+Theorem bounds_nested_elem: forall (x : R) k1 k2 r, (k2 >= k1)%nat -> r ∈ x.[k2] -> r ∈ x.[k1].
+Proof.
+  intros x k1 k2 r Hk [H1 H2].
+  pose (bounds_stricter_min x k1 k2 Hk).
+  pose (bounds_stricter_max x k1 k2 Hk).
+  split; q_order.
+Qed.

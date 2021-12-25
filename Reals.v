@@ -29,3 +29,5 @@ Record R : Set := make {
   bounds_stricter_max : forall k1 k2, (k2 >= k1)%nat -> (max bounds.[k2] <= max bounds.[k1])%Q;
   bounds_convergent : (forall eps, eps > 0 -> exists k, width bounds.[k] < eps)%Q;
 }.
+
+Coercion bounds : R >-> Stream.

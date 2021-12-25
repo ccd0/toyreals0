@@ -73,3 +73,27 @@ Definition lt (x y : R) :=
 
 Infix "<" := lt : R_scope.
 Notation "x > y" := (lt y x) (only parsing) : R_scope.
+
+Theorem lt_elem : forall x y, x < y <-> exists k, forall r s, r ∈ x.[k] -> s ∈ y.[k] -> (r < s)%Q.
+Proof.
+  intros x y.
+  split; intros [k H]; exists k.
+  - intros r s [_ Hr] [Hs _].
+    q_order.
+  - apply H.
+    + apply bounds_max_elem.
+    + apply bounds_min_elem.
+Qed.
+
+Theorem lt_not_gt : forall x y, x < y -> ~ x > y.
+Proof.
+  intros x y H1 H2.
+  apply lt_elem in H1, H2.
+  destruct H1 as [k1 H1], H2 as [k2 H2].
+  set (k3 := Nat.max k1 k2).
+  destruct (bounds_nonempty x k3) as [r Hr], (bounds_nonempty y k3) as [s Hs].
+  assert (r < s /\ s < r)%Q as [Hl Hg]; [|q_order].
+  split; [apply H1|apply H2];
+    apply (bounds_nested_elem _ _ k3); trivial;
+    try apply Nat.le_max_l; apply Nat.le_max_r.
+Qed.

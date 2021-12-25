@@ -32,6 +32,11 @@ Record R : Set := make {
   bounds_convergent : (forall eps, eps > 0 -> exists k, width bounds.[k] < eps)%Q;
 }.
 
+Declare Scope R_scope.
+Delimit Scope R_scope with R.
+Bind Scope R_scope with R.
+Local Open Scope R_scope.
+
 Coercion bounds : R >-> Stream.
 
 Theorem bounds_min_elem : forall (x : R) k, min x.[k] ∈ x.[k].
@@ -62,3 +67,9 @@ Proof.
   pose (bounds_stricter_max x k1 k2 Hk).
   split; q_order.
 Qed.
+
+Definition lt (x y : R) :=
+  exists k, (max x.[k] < min y.[k])%Q.
+
+Infix "<" := lt : R_scope.
+Notation "x > y" := (lt y x) (only parsing) : R_scope.

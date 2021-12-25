@@ -1,4 +1,5 @@
 Require Import Coq.QArith.QArith.
+Require Import Coq.QArith.QOrderedType.
 Require Import Coq.Lists.Streams.
 Global Close Scope Q_scope.
 Local Close Scope nat_scope.
@@ -11,6 +12,7 @@ Record Qinterval : Set := make_Qinterval {
 Declare Scope QI_scope.
 Delimit Scope QI_scope with QI.
 Bind Scope QI_scope with Qinterval.
+Local Open Scope QI_scope.
 Notation "[ a , b ]Q" := (make_Qinterval a b) (at level 0) : QI_scope.
 Notation "s .[ k ]" := (Str_nth k s) (at level 2, left associativity, format "s .[ k ]") : QI_scope.
 
@@ -31,3 +33,24 @@ Record R : Set := make {
 }.
 
 Coercion bounds : R >-> Stream.
+
+Theorem bounds_min_elem : forall (x : R) k, min x.[k] ∈ x.[k].
+Proof.
+  intros x k.
+  split; try q_order.
+  apply bounds_min_le_max.
+Qed.
+
+Theorem bounds_max_elem : forall (x : R) k, max x.[k] ∈ x.[k].
+Proof.
+  intros x k.
+  split; try q_order.
+  apply bounds_min_le_max.
+Qed.
+
+Theorem bounds_nonempty : forall (x : R) k, exists r, r ∈ x.[k].
+Proof.
+  intros x k.
+  exists (min x.[k]).
+  apply bounds_min_elem.
+Qed.

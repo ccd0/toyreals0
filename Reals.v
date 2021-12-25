@@ -17,6 +17,11 @@ Notation "s .[ k ]" := (Str_nth k s) (at level 2, left associativity, format "s 
 Definition width (xs : Qinterval) : Q :=
   max xs - min xs.
 
+Definition in_Qinterval (q : Q) (rs : Qinterval) :=
+  (min rs <= q <= max rs)%Q.
+
+Infix "∈" := in_Qinterval (at level 70, no associativity) : QI_scope.
+
 Record R : Set := make {
   bounds : Stream Qinterval;
   bounds_min_le_max : forall k, (min bounds.[k] <= max bounds.[k])%Q;

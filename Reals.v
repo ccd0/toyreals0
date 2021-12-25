@@ -11,8 +11,8 @@ Record Qinterval : Set := make_Qinterval {
 Declare Scope QI_scope.
 Delimit Scope QI_scope with QI.
 Bind Scope QI_scope with Qinterval.
-Notation "[ a , b ]" := (make_Qinterval a b) (at level 2) : QI_scope.
-Notation "s .[ k ]" := (Str_nth k s) (at level 2, format "s .[ k ]") : QI_scope.
+Notation "[ a , b ]" := (make_Qinterval a b) (at level 0) : QI_scope.
+Notation "s .[ k ]" := (Str_nth k s) (at level 2, left associativity, format "s .[ k ]") : QI_scope.
 
 Definition width (xs : Qinterval) : Q :=
   max xs - min xs.

@@ -39,21 +39,21 @@ Local Open Scope R_scope.
 
 Coercion bounds : R >-> Stream.
 
-Theorem bounds_min_elem : forall (x : R) k, min x.[k] ∈ x.[k].
+Lemma bounds_min_elem : forall (x : R) k, min x.[k] ∈ x.[k].
 Proof.
   intros x k.
   split; try q_order.
   apply bounds_min_le_max.
 Qed.
 
-Theorem bounds_max_elem : forall (x : R) k, max x.[k] ∈ x.[k].
+Lemma bounds_max_elem : forall (x : R) k, max x.[k] ∈ x.[k].
 Proof.
   intros x k.
   split; try q_order.
   apply bounds_min_le_max.
 Qed.
 
-Theorem bounds_nonempty : forall (x : R) k, exists r, r ∈ x.[k].
+Lemma bounds_nonempty : forall (x : R) k, exists r, r ∈ x.[k].
 Proof.
   intros x k.
   exists (min x.[k]).
@@ -74,7 +74,7 @@ Definition lt (x y : R) :=
 Infix "<" := lt : R_scope.
 Notation "x > y" := (lt y x) (only parsing) : R_scope.
 
-Theorem lt_elem : forall x y, x < y <-> exists k, forall r s, r ∈ x.[k] -> s ∈ y.[k] -> (r < s)%Q.
+Lemma lt_elem : forall x y, x < y <-> exists k, forall r s, r ∈ x.[k] -> s ∈ y.[k] -> (r < s)%Q.
 Proof.
   intros x y.
   split; intros [k H]; exists k.

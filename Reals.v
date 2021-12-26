@@ -143,3 +143,130 @@ Proof.
       * apply bounds_min_elem.
     + apply Qplus_le_r, Qopp_le_compat, HC.
 Defined.
+
+Definition apart x y := x < y \/ x > y.
+Infix "=/=" := apart (no associativity, at level 70) : R_scope.
+
+Definition eqv x y := ~ x =/= y.
+Infix "==" := eqv : R_scope.
+
+Definition atm x y := ~ x > y.
+Infix "<=" := atm : R_scope.
+Notation "x >= y" := (atm y x) (only parsing) : R_scope.
+
+Theorem atm_refl : forall x, x <= x.
+Proof.
+  exact lt_irrefl.
+Qed.
+
+Theorem apart_irrefl : forall x, ~ x =/= x.
+Proof.
+  intros x [H|H]; apply lt_irrefl in H; trivial.
+Qed.
+
+Theorem eqv_refl : forall x, x == x.
+Proof.
+  exact apart_irrefl.
+Qed.
+
+Theorem apart_sym : forall x y, x =/= y -> y =/= x.
+Proof.
+  intros x y [H|H]; [right|left]; exact H.
+Defined.
+
+Theorem eqv_sym : forall x y, x == y -> y == x.
+Proof.
+  intros x y H HN.
+  apply apart_sym in HN.
+  apply H, HN.
+Qed.
+
+Theorem lt_apart : forall x y, x < y -> x =/= y.
+Proof.
+  intros x y H.
+  left; exact H.
+Defined.
+
+Theorem gt_apart : forall x y, x > y -> x =/= y.
+Proof.
+  intros x y H.
+  right; exact H.
+Defined.
+
+Theorem lt_atm : forall x y, x < y -> x <= y.
+Proof.
+  exact lt_not_gt.
+Qed.
+
+Theorem eqv_atm : forall x y, x == y -> x <= y.
+Proof.
+  intros x y H HN.
+  apply gt_apart in HN.
+  apply H, HN.
+Qed.
+
+Theorem eqv_atl : forall x y, x == y -> x >= y.
+Proof.
+  intros x y H HN.
+  apply lt_apart in HN.
+  apply H, HN.
+Qed.
+
+Theorem atm_atl_eqv : forall x y, x <= y -> x >= y -> x == y.
+Proof.
+  intros x y H1 H2 [HN|HN].
+  - apply H2, HN.
+  - apply H1, HN.
+Qed.
+
+Theorem atm_atl_iff_eqv : forall x y, x <= y /\ x >= y <-> x == y.
+Proof.
+  intros x y.
+  split.
+  - intros [H1 H2].
+    apply atm_atl_eqv; trivial.
+  - intro H.
+    split.
+    + apply eqv_atm, H.
+    + apply eqv_atl, H.
+Qed.
+
+Theorem atm_apart_lt : forall x y, x <= y -> x =/= y -> x < y.
+Proof.
+  intros x y H1 [H2|H2].
+  - exact H2.
+  - contradict H2.
+    exact H1.
+Defined.
+
+Theorem atm_apart_iff_lt : forall x y, x <= y /\ x =/= y <-> x < y.
+Proof.
+  intros x y.
+  split.
+  - intros [H1 H2].
+    apply atm_apart_lt; trivial.
+  - intro H.
+    split.
+    + apply lt_atm, H.
+    + apply lt_apart, H.
+Defined.
+
+Theorem atl_apart_gt : forall x y, x >= y -> x =/= y -> x > y.
+Proof.
+  intros x y H1 [H2|H2].
+  - contradict H2.
+    exact H1.
+  - exact H2.
+Defined.
+
+Theorem atl_apart_iff_gt : forall x y, x >= y /\ x =/= y <-> x > y.
+Proof.
+  intros x y.
+  split.
+  - intros [H1 H2].
+    apply atl_apart_gt; trivial.
+  - intro H.
+    split.
+    + apply lt_atm, H.
+    + apply gt_apart, H.
+Defined.

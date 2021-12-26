@@ -71,6 +71,14 @@ Proof.
   split; q_order.
 Qed.
 
+Lemma bounds_width_decr : forall (x : R) k1 k2, (k2 >= k1)%nat -> (width x.[k2] <= width x.[k1])%Q.
+Proof.
+  intros x k1 k2 Hk.
+  apply Qplus_le_compat.
+  - apply bounds_stricter_max, Hk.
+  - apply Qopp_le_compat, bounds_stricter_min, Hk.
+Qed.
+
 Definition lt (x y : R) :=
   exists k, (max x.[k] < min y.[k])%Q.
 
@@ -101,3 +109,37 @@ Proof.
   intros x y H1 H2.
   apply (lt_irrefl x), (lt_trans _ y); trivial.
 Qed.
+
+Lemma lt_gap :
+  forall x y, x < y -> exists k eps, (eps > 0)%Q /\
+    forall n r s, (n >= k)%nat -> r ∈ x.[n] -> s ∈ y.[n] -> (s - r >= eps)%Q.
+Proof.
+  intros x y [k Hk].
+  exists k, (min y.[k] - max x.[k])%Q.
+  split; [apply (Qlt_minus_iff (max x.[k])), Hk|].
+  intros n r s Hn Hr Hs.
+  apply (bounds_nested_elem _ k) in Hr, Hs; trivial.
+  destruct Hr as [_ Hr], Hs as [Hs _].
+  apply Qplus_le_compat; trivial.
+  apply Qopp_le_compat; trivial.
+Defined.
+
+Theorem lt_or : forall x y z, x < y -> z < y \/ z > x.
+Proof.
+  intros x y z H.
+  apply lt_gap in H.
+  destruct H as [k1 [eps [Heps H]]].
+  destruct (bounds_convergent z eps Heps) as [k2 Hk2].
+  set (k3 := Nat.max k1 k2).
+  apply (Qle_lt_trans (width z.[k3])) in Hk2; [|apply bounds_width_decr, Nat.le_max_r].
+  destruct (Qlt_le_dec (max x.[k3]) (min z.[k3])) as [HC|HC].
+  - right. exists k3. trivial.
+  - left. exists k3.
+    apply (Qplus_lt_l _ _ (- min z.[k3])).
+    apply (Qlt_le_trans _ eps), (Qle_trans _ (min y.[k3] - max x.[k3])); trivial.
+    + apply (H k3).
+      * apply Nat.le_max_l.
+      * apply bounds_max_elem.
+      * apply bounds_min_elem.
+    + apply Qplus_le_r, Qopp_le_compat, HC.
+Defined.

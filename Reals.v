@@ -270,3 +270,40 @@ Proof.
     + apply lt_atm, H.
     + apply gt_apart, H.
 Defined.
+
+Theorem atm_trans : forall x y z, x <= y -> y <= z -> x <= z.
+Proof.
+  intros x y z H1 H2 HN.
+  apply (lt_or _ _ y) in HN.
+  destruct HN as [HN|HN].
+  - apply H1, HN.
+  - apply H2, HN.
+Qed.
+
+Theorem lt_atm_trans : forall x y z, x < y -> y <= z -> x < z.
+Proof.
+  intros x y z H1 H2.
+  apply (lt_or _ _ z) in H1.
+  destruct H1 as [H1|H1].
+  - contradict H1.
+    exact H2.
+  - exact H1.
+Defined.
+
+Theorem atm_lt_trans : forall x y z, x <= y -> y < z -> x < z.
+Proof.
+  intros x y z H1 H2.
+  apply (lt_or _ _ x) in H2.
+  destruct H2 as [H2|H2].
+  - exact H2.
+  - contradict H2.
+    exact H1.
+Defined.
+
+Theorem eqv_trans : forall x y z, x == y -> y == z -> x == z.
+Proof.
+  intros x y z H1 H2.
+  apply atm_atl_eqv.
+  - apply (atm_trans _ y); apply eqv_atm; trivial.
+  - apply (atm_trans _ y); apply eqv_atl; trivial.
+Qed.

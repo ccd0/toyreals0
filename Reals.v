@@ -4,10 +4,22 @@ Require Import Coq.Lists.Streams.
 Global Close Scope Q_scope.
 Local Close Scope nat_scope.
 
+Definition set (A : Type) : Type := A -> Prop.
+
+Declare Scope set_scope.
+Delimit Scope set_scope with set.
+Local Open Scope set_scope.
+
+Definition is_element_of {A : Type} (x : A) (s : set A) := s x.
+Infix "∈" := is_element_of (at level 70, no associativity) : set_scope.
+
 Record Qinterval : Set := make_Qinterval {
   min : Q;
   max : Q;
 }.
+
+Definition QIcontents (rs : Qinterval) : set Q :=
+  fun q => (min rs <= q <= max rs)%Q.
 
 Declare Scope QI_scope.
 Delimit Scope QI_scope with QI.
@@ -16,13 +28,10 @@ Local Open Scope QI_scope.
 Notation "[ a , b ]Q" := (make_Qinterval a b) (at level 0) : QI_scope.
 Notation "s .[ k ]" := (Str_nth k s) (at level 2, left associativity, format "s .[ k ]") : QI_scope.
 
+Coercion QIcontents : Qinterval >-> set.
+
 Definition width (xs : Qinterval) : Q :=
   max xs - min xs.
-
-Definition in_Qinterval (q : Q) (rs : Qinterval) :=
-  (min rs <= q <= max rs)%Q.
-
-Infix "∈" := in_Qinterval (at level 70, no associativity) : QI_scope.
 
 Record R : Set := make {
   bounds : Stream Qinterval;

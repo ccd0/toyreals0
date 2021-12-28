@@ -1,6 +1,7 @@
 Require Import Coq.QArith.QArith.
 Require Import Coq.QArith.QOrderedType.
 Require Import Coq.Lists.Streams.
+Require Import Coq.Logic.ChoiceFacts.
 Global Close Scope Q_scope.
 Local Close Scope nat_scope.
 
@@ -382,4 +383,150 @@ Theorem eqv_Proper : Proper (eqv ==> eqv ==> iff) eqv.
   split; intro H;
     [apply (eqv_trans _ x1), (eqv_trans _ y1) | apply (eqv_trans _ x2), (eqv_trans _ y2)];
     assumption || (apply eqv_sym; assumption).
+Qed.
+
+Lemma lem_dn :
+  ExcludedMiddle -> forall P : Prop, ~ ~ P -> P.
+Proof.
+  intros EM P H.
+  destruct (EM P) as [H2|H2].
+  - exact H2.
+  - contradict H.
+    exact H2.
+Qed.
+
+Theorem lem_not_atm_gt : ExcludedMiddle -> forall x y, ~ x <= y -> x > y.
+Proof.
+  intros.
+  apply lem_dn; trivial.
+Qed.
+
+Theorem lem_not_eqv_apart : ExcludedMiddle -> forall x y, ~ x == y -> x =/= y.
+Proof.
+  intros.
+  apply lem_dn; trivial.
+Qed.
+
+Theorem dn_trichotomy : forall x y, ~ ~ (x < y \/ x == y \/ x > y).
+  intros x y HN.
+  assert (x == y) as HE.
+  - intros [H2|H2]; contradict HN.
+    + left. exact H2.
+    + right. right. exact H2.
+  - contradict HN.
+    right. left. exact HE.
+Qed.
+
+Theorem lem_trichotomy : ExcludedMiddle -> forall x y, x < y \/ x == y \/ x > y.
+  intros. apply lem_dn, dn_trichotomy; trivial.
+Qed.
+
+Lemma dn_imp_dn : forall P Q : Prop, ~ ~ P -> (P -> Q) -> ~ ~ Q.
+Proof.
+  intros P Q H1 H2 HN.
+  assert (~ P) as H3.
+  - intro H4.
+    apply HN, H2, H4.
+  - apply H1, H3.
+Qed.
+
+Theorem dn_lt_or_eqv : forall x y, x <= y -> ~ ~ (x < y \/ x == y).
+Proof.
+  intros x y H.
+  apply (dn_imp_dn (x < y \/ x == y \/ x > y)).
+  - apply dn_trichotomy.
+  - unfold atm in H.
+    tauto.
+Qed.
+
+Theorem lem_lt_or_eqv : ExcludedMiddle -> forall x y, x <= y -> x < y \/ x == y.
+Proof.
+  intros. apply lem_dn, dn_lt_or_eqv; trivial.
+Qed.
+
+Theorem dn_gt_or_eqv : forall x y, x >= y -> ~ ~ (x > y \/ x == y).
+Proof.
+  intros x y H.
+  apply (dn_imp_dn (x < y \/ x == y \/ x > y)).
+  - apply dn_trichotomy.
+  - unfold atm in H.
+    tauto.
+Qed.
+
+Theorem lem_gt_or_eqv : ExcludedMiddle -> forall x y, x >= y -> x > y \/ x == y.
+Proof.
+  intros. apply lem_dn, dn_gt_or_eqv; trivial.
+Qed.
+
+Lemma dn_lem : forall P : Prop, ~ ~ (P \/ ~ P).
+Proof.
+  tauto.
+Qed.
+
+Theorem dn_lt_or_atl : forall x y, ~ ~ (x < y \/ x >= y).
+Proof.
+  intros. apply dn_lem.
+Qed.
+
+Theorem lem_lt_or_atl : ExcludedMiddle -> forall x y, x < y \/ x >= y.
+Proof.
+  intros H x y. apply H.
+Qed.
+
+Theorem dn_apart_or_eqv : forall x y, ~ ~ (x =/= y \/ x == y).
+Proof.
+  intros. apply dn_lem.
+Qed.
+
+Theorem lem_apart_or_eqv : ExcludedMiddle -> forall x y, x =/= y \/ x == y.
+Proof.
+  intros H x y. apply H.
+Qed.
+
+Theorem dn_atm_or_atl : forall x y, ~ ~ (x <= y \/ x >= y).
+Proof.
+  intros x y.
+  apply (dn_imp_dn (x < y \/ x >= y)).
+  - apply dn_lem.
+  - intros [H|H].
+    + left.
+      apply lt_atm, H.
+    + tauto.
+Qed.
+
+Theorem lem_atm_or_atl : ExcludedMiddle -> forall x y, x <= y \/ x >= y.
+Proof.
+  intros. apply lem_dn, dn_atm_or_atl; trivial.
+Qed.
+
+Theorem dn_apart_or_atm : forall x y, ~ ~ (x =/= y \/ x <= y).
+Proof.
+  intros x y.
+  apply (dn_imp_dn (x =/= y \/ x == y)).
+  - apply dn_lem.
+  - intros [H|H].
+    + tauto.
+    + right.
+      apply eqv_atm, H.
+Qed.
+
+Theorem lem_apart_or_atm : ExcludedMiddle -> forall x y, x =/= y \/ x <= y.
+Proof.
+  intros. apply lem_dn, dn_apart_or_atm; trivial.
+Qed.
+
+Theorem dn_apart_or_atl : forall x y, ~ ~ (x =/= y \/ x >= y).
+Proof.
+  intros x y.
+  apply (dn_imp_dn (x =/= y \/ x == y)).
+  - apply dn_lem.
+  - intros [H|H].
+    + tauto.
+    + right.
+      apply eqv_atl, H.
+Qed.
+
+Theorem lem_apart_or_atl : ExcludedMiddle -> forall x y, x =/= y \/ x >= y.
+Proof.
+  intros. apply lem_dn, dn_apart_or_atl; trivial.
 Qed.

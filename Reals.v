@@ -348,3 +348,38 @@ Proof.
     apply eqv_sym in H2.
     apply (eqv_trans _ z); trivial.
 Defined.
+
+Add Relation R eqv
+  reflexivity proved by eqv_refl
+  symmetry proved by eqv_sym
+  transitivity proved by eqv_trans
+  as eqv_rel.
+
+Add Morphism lt with signature (eqv ==> eqv ==> iff) as lt_mor.
+Proof.
+  intros x1 x2 Hx y1 y2 Hy.
+  split; intro H;
+    [apply (atm_lt_trans _ x1), (lt_atm_trans _ y1) | apply (atm_lt_trans _ x2), (lt_atm_trans _ y2)];
+    assumption || (apply eqv_atl; assumption) || (apply eqv_atm; assumption).
+Defined.
+
+Add Morphism apart with signature (eqv ==> eqv ==> iff) as apart_mor.
+Proof.
+  intros x1 x2 Hx y1 y2 Hy.
+  apply Morphisms_Prop.or_iff_morphism;
+    apply lt_mor_Proper; trivial.
+Defined.
+
+Add Morphism atm with signature (eqv ==> eqv ==> iff) as atm_mor.
+Proof.
+  intros x1 x2 Hx y1 y2 Hy.
+  apply Morphisms_Prop.not_iff_morphism;
+    apply lt_mor_Proper; trivial.
+Qed.
+
+Theorem eqv_Proper : Proper (eqv ==> eqv ==> iff) eqv.
+  intros x1 x2 Hx y1 y2 Hy.
+  split; intro H;
+    [apply (eqv_trans _ x1), (eqv_trans _ y1) | apply (eqv_trans _ x2), (eqv_trans _ y2)];
+    assumption || (apply eqv_sym; assumption).
+Qed.

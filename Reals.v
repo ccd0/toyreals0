@@ -316,3 +316,35 @@ Proof.
   - apply (atm_trans _ y); apply eqv_atm; trivial.
   - apply (atm_trans _ y); apply eqv_atl; trivial.
 Qed.
+
+Definition equivalence_class_of (x : R) : set R :=
+  fun y => y == x.
+
+Theorem ec_own : forall x, x ∈ equivalence_class_of x.
+Proof.
+  exact eqv_refl.
+Qed.
+
+Theorem ec_unique :
+  forall x y, x ∈ equivalence_class_of y ->
+    forall z, z ∈ equivalence_class_of x <-> z ∈ equivalence_class_of y.
+Proof.
+  intros x y H z.
+  split; intro H2.
+  - apply (eqv_trans _ x); trivial.
+  - apply eqv_sym in H.
+    apply (eqv_trans _ y); trivial.
+Qed.
+
+Theorem eqv_same_ec :
+  forall x y, x == y <-> exists z, x ∈ equivalence_class_of z /\ y ∈ equivalence_class_of z.
+Proof.
+  intros x y.
+  split; intro H.
+  - exists y.
+    split; trivial.
+    apply eqv_refl.
+  - destruct H as [z [H1 H2]].
+    apply eqv_sym in H2.
+    apply (eqv_trans _ z); trivial.
+Defined.

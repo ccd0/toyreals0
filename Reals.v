@@ -537,11 +537,6 @@ Proof.
   intros. apply lem_dn, dn_apart_or_atl; trivial.
 Qed.
 
-Lemma refute_or : forall A B : Prop, ~ A -> ~ B -> ~ (A \/ B).
-Proof.
-  tauto.
-Qed.
-
 Definition decidable (P : Prop) := {P} + {~ P}.
 
 Definition QIlt_dec (rs ss : Qinterval) : decidable (rs < ss)%QI :=
@@ -550,36 +545,38 @@ Definition QIlt_dec (rs ss : Qinterval) : decidable (rs < ss)%QI :=
   | right p => right (Qle_not_lt _ _ p)
   end.
 
-Definition apart_witness_dec (rs ss : Qinterval) : decidable (rs < ss \/ ss < rs)%QI :=
-  match QIlt_dec rs ss with
+Lemma refute_or : forall A B : Prop, ~ A -> ~ B -> ~ (A \/ B).
+Proof.
+  tauto.
+Qed.
+
+Definition or_dec {A B : Prop} (d : decidable A) (e : decidable B) : decidable (A \/ B) :=
+  match d with
   | left p => left (or_introl p)
   | right p =>
-      match QIlt_dec ss rs with
+      match e with
       | left q => left (or_intror q)
       | right q => right (refute_or _ _ p q)
       end
   end.
 
-Definition is_apart_witness (x y : R) (k : nat) :=
-  (x.[k] < y.[k] \/ y.[k] < x.[k])%QI.
-
-Lemma apart_witness_exists :
-  forall x y, x =/= y -> exists k, is_apart_witness x y k.
+Lemma or_ex_ex_or :
+  forall (A : Type) (P Q : A -> Prop),
+    (exists x, P x) \/ (exists x, Q x) -> exists x, P x \/ Q x.
 Proof.
-  intros x y [[k H]|[k H]]; exists k; [left|right]; exact H.
+  intros A P Q [[x H]|[x H]]; exists x; [left|right]; exact H.
 Defined.
 
-Definition find_apart_witness (x y : R) (p : x =/= y) : nat :=
-  constructive_ground_epsilon_nat
-    (is_apart_witness x y)
-    (fun k => apart_witness_dec x.[k] y.[k])
-    (apart_witness_exists x y p).
+Definition find_lt_witness (w x y z : R) (p : w < x \/ y < z) : nat :=
+  constructive_ground_epsilon_nat _
+    (fun k => or_dec (QIlt_dec w.[k] x.[k]) (QIlt_dec y.[k] z.[k]))
+    (or_ex_ex_or _ _ _ p).
 
-Lemma find_apart_witness_spec :
-  forall x y p, is_apart_witness x y (find_apart_witness x y p).
+Lemma find_lt_witness_spec :
+  forall w x y z p, let k := find_lt_witness w x y z p in (w.[k] < x.[k] \/ y.[k] < z.[k])%QI.
 Proof.
   intros.
-  unfold find_apart_witness.
+  unfold find_lt_witness in k.
   apply constructive_ground_epsilon_spec_nat.
 Defined.
 
@@ -591,9 +588,12 @@ Proof.
   - exact H1.
 Defined.
 
-Definition compare (x y : R) (p : x =/= y) : {x < y} + {x > y} :=
-  let k := find_apart_witness x y p in
-    match QIlt_dec x.[k] y.[k] with
+Definition lt_or_dec (w x y z : R) (p : w < x \/ y < z) : {w < x} + {y < z} :=
+  let k := find_lt_witness w x y z p in
+    match QIlt_dec w.[k] x.[k] with
     | left q => left (ex_intro _ k q)
-    | right q => right (ex_intro _ k (contradict_left _ _ (find_apart_witness_spec x y p) q))
+    | right q => right (ex_intro _ k (contradict_left _ _ (find_lt_witness_spec w x y z p) q))
     end.
+
+Definition compare (x y : R) (p : x =/= y) : {x < y} + {x > y} :=
+  lt_or_dec x y y x p.

@@ -384,7 +384,7 @@ Proof.
     apply lt_mor_Proper; trivial.
 Qed.
 
-Theorem eqv_Proper : Proper (eqv ==> eqv ==> iff) eqv.
+Theorem eqv_compatible : Proper (eqv ==> eqv ==> iff) eqv.
   intros x1 x2 Hx y1 y2 Hy.
   split; intro H;
     [apply (eqv_trans _ x1), (eqv_trans _ y1) | apply (eqv_trans _ x2), (eqv_trans _ y2)];

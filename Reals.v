@@ -611,3 +611,38 @@ Proof.
     contradict H2;
     apply lt_not_gt, H1.
 Qed.
+
+Definition Markov :=
+  forall P : nat -> Prop, (forall n, P n \/ ~ P n) -> ~ (forall n, ~ P n) -> exists n, P n.
+
+Lemma markov_sig_dn :
+  Markov -> forall P : nat -> Prop, (forall n, {P n} + {~ P n}) -> ~ ~ (exists n, P n) -> exists n, P n.
+Proof.
+  firstorder.
+Qed.
+
+Theorem markov_not_atm_gt : Markov -> forall x y, ~ x <= y -> x > y.
+Proof.
+  intros HM x y H.
+  apply markov_sig_dn; trivial.
+  intro n.
+  apply QIlt_dec.
+Qed.
+
+Lemma ex_or_or_ex :
+  forall (A : Type) (P Q : A -> Prop),
+    (exists x, P x \/ Q x) -> (exists x, P x) \/ (exists x, Q x).
+Proof.
+  intros A P Q [x [H|H]]; [left|right]; exists x; exact H.
+Defined.
+
+Theorem markov_or_lt_stable :
+  Markov -> forall w x y z, ~ ~ (w < x \/ y < z) -> w < x \/ y < z.
+Proof.
+  intros HM w x y z H.
+  apply ex_or_or_ex, markov_sig_dn; trivial.
+  - intro n.
+    apply or_dec; apply QIlt_dec.
+  - apply (dn_imp_dn (w < x \/ y < z)); trivial.
+    apply or_ex_ex_or.
+Qed.

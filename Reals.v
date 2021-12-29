@@ -2,6 +2,7 @@ Require Import Coq.QArith.QArith.
 Require Import Coq.QArith.QOrderedType.
 Require Import Coq.Lists.Streams.
 Require Import Coq.Logic.ChoiceFacts.
+Require Import Coq.Logic.ConstructiveEpsilon.
 Global Close Scope Q_scope.
 Local Close Scope nat_scope.
 
@@ -530,3 +531,64 @@ Theorem lem_apart_or_atl : ExcludedMiddle -> forall x y, x =/= y \/ x >= y.
 Proof.
   intros. apply lem_dn, dn_apart_or_atl; trivial.
 Qed.
+
+Lemma refute_or : forall A B : Prop, ~ A -> ~ B -> ~ (A \/ B).
+Proof.
+  tauto.
+Qed.
+
+Definition decidable (P : Prop) := {P} + {~ P}.
+
+Definition lt_witness_dec (rs ss : Qinterval) : decidable (max rs < min ss)%Q :=
+  match Qlt_le_dec (max rs) (min ss) with
+  | left p => left p
+  | right p => right (Qle_not_lt _ _ p)
+  end.
+
+Definition apart_witness_dec (rs ss : Qinterval) : decidable (max rs < min ss \/ max ss < min rs)%Q :=
+  match lt_witness_dec rs ss with
+  | left p => left (or_introl p)
+  | right p =>
+      match lt_witness_dec ss rs with
+      | left q => left (or_intror q)
+      | right q => right (refute_or _ _ p q)
+      end
+  end.
+
+Definition is_apart_witness (x y : R) (k : nat) :=
+  (max x.[k] < min y.[k] \/ max y.[k] < min x.[k])%Q.
+
+Lemma apart_witness_exists :
+  forall x y, x =/= y -> exists k, is_apart_witness x y k.
+Proof.
+  intros x y [[k H]|[k H]]; exists k; [left|right]; exact H.
+Defined.
+
+Definition find_apart_witness (x y : R) (p : x =/= y) : nat :=
+  constructive_ground_epsilon_nat
+    (is_apart_witness x y)
+    (fun k => apart_witness_dec x.[k] y.[k])
+    (apart_witness_exists x y p).
+
+Lemma find_apart_witness_spec :
+  forall x y p, is_apart_witness x y (find_apart_witness x y p).
+Proof.
+  intros.
+  unfold find_apart_witness.
+  apply constructive_ground_epsilon_spec_nat.
+Defined.
+
+Lemma contradict_left : forall A B : Prop, A \/ B -> ~A -> B.
+Proof.
+  intros A B [H1|H1] H2.
+  - contradict H2.
+    exact H1.
+  - exact H1.
+Defined.
+
+Definition compare (x y : R) (p : x =/= y) : {x < y} + {x > y} :=
+  let k := find_apart_witness x y p in
+    match lt_witness_dec x.[k] y.[k] with
+    | left q => left (ex_intro _ k q)
+    | right q => right (ex_intro _ k (contradict_left _ _ (find_apart_witness_spec x y p) q))
+    end.

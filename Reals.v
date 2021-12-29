@@ -597,3 +597,17 @@ Definition lt_or_dec (w x y z : R) (p : w < x \/ y < z) : {w < x} + {y < z} :=
 
 Definition compare (x y : R) (p : x =/= y) : {x < y} + {x > y} :=
   lt_or_dec x y y x p.
+
+Definition sig2bool {A B : Prop} (u : {A} + {B}) : bool := if u then true else false.
+
+Theorem compare_compatible :
+  forall x1 x2, x1 == x2 -> forall y1 y2, y1 == y2 -> forall p1 p2,
+    sig2bool (compare x1 y1 p1) = sig2bool (compare x2 y2 p2).
+Proof.
+  intros x1 x2 Hx y1 y2 Hy p1 p2.
+  destruct (compare x1 y1 p1) as [H1|H1];
+    destruct (compare x2 y2 p2) as [H2|H2]; trivial;
+    cbn; rewrite Hx, Hy in H1;
+    contradict H2;
+    apply lt_not_gt, H1.
+Qed.

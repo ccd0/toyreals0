@@ -90,8 +90,13 @@ Proof.
   - apply Qopp_le_compat, bounds_stricter_min, Hk.
 Qed.
 
+Definition QIlt (rs ss : Qinterval) := (max rs < min ss)%Q.
+
+Infix "<" := QIlt : QI_scope.
+Notation "x > y" := (QIlt y x) (only parsing) : QI_scope.
+
 Definition lt (x y : R) :=
-  exists k, (max x.[k] < min y.[k])%Q.
+  exists k, (x.[k] < y.[k])%QI.
 
 Infix "<" := lt : R_scope.
 Notation "x > y" := (lt y x) (only parsing) : R_scope.
@@ -539,24 +544,24 @@ Qed.
 
 Definition decidable (P : Prop) := {P} + {~ P}.
 
-Definition lt_witness_dec (rs ss : Qinterval) : decidable (max rs < min ss)%Q :=
+Definition QIlt_dec (rs ss : Qinterval) : decidable (rs < ss)%QI :=
   match Qlt_le_dec (max rs) (min ss) with
   | left p => left p
   | right p => right (Qle_not_lt _ _ p)
   end.
 
-Definition apart_witness_dec (rs ss : Qinterval) : decidable (max rs < min ss \/ max ss < min rs)%Q :=
-  match lt_witness_dec rs ss with
+Definition apart_witness_dec (rs ss : Qinterval) : decidable (rs < ss \/ ss < rs)%QI :=
+  match QIlt_dec rs ss with
   | left p => left (or_introl p)
   | right p =>
-      match lt_witness_dec ss rs with
+      match QIlt_dec ss rs with
       | left q => left (or_intror q)
       | right q => right (refute_or _ _ p q)
       end
   end.
 
 Definition is_apart_witness (x y : R) (k : nat) :=
-  (max x.[k] < min y.[k] \/ max y.[k] < min x.[k])%Q.
+  (x.[k] < y.[k] \/ y.[k] < x.[k])%QI.
 
 Lemma apart_witness_exists :
   forall x y, x =/= y -> exists k, is_apart_witness x y k.
@@ -588,7 +593,7 @@ Defined.
 
 Definition compare (x y : R) (p : x =/= y) : {x < y} + {x > y} :=
   let k := find_apart_witness x y p in
-    match lt_witness_dec x.[k] y.[k] with
+    match QIlt_dec x.[k] y.[k] with
     | left q => left (ex_intro _ k q)
     | right q => right (ex_intro _ k (contradict_left _ _ (find_apart_witness_spec x y p) q))
     end.

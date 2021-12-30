@@ -647,11 +647,11 @@ Definition lt_or_dec (w x y z : R) (p : w < x \/ y < z) : {w < x} + {y < z} :=
 Definition compare (x y : R) (p : x =/= y) : {x < y} + {x > y} :=
   lt_or_dec x y y x p.
 
-Definition sig2bool {A B : Prop} (u : {A} + {B}) : bool := if u then true else false.
+Definition sum2bool {A B : Prop} (u : {A} + {B}) : bool := if u then true else false.
 
 Theorem compare_compatible :
   forall x1 x2, x1 == x2 -> forall y1 y2, y1 == y2 -> forall p1 p2,
-    sig2bool (compare x1 y1 p1) = sig2bool (compare x2 y2 p2).
+    sum2bool (compare x1 y1 p1) = sum2bool (compare x2 y2 p2).
 Proof.
   intros x1 x2 Hx y1 y2 Hy p1 p2.
   destruct (compare x1 y1 p1) as [H1|H1];
@@ -664,7 +664,7 @@ Qed.
 Definition Markov :=
   forall P : nat -> Prop, (forall n, P n \/ ~ P n) -> ~ (forall n, ~ P n) -> exists n, P n.
 
-Lemma markov_sig_dn :
+Lemma markov_sum_dn :
   Markov -> forall P : nat -> Prop, (forall n, {P n} + {~ P n}) -> ~ ~ (exists n, P n) -> exists n, P n.
 Proof.
   firstorder.
@@ -673,7 +673,7 @@ Qed.
 Theorem markov_not_atm_gt : Markov -> forall x y, ~ x <= y -> x > y.
 Proof.
   intros HM x y H.
-  apply markov_sig_dn; trivial.
+  apply markov_sum_dn; trivial.
   intro n.
   apply QIlt_dec.
 Qed.
@@ -689,7 +689,7 @@ Theorem markov_or_lt_stable :
   Markov -> forall w x y z, ~ ~ (w < x \/ y < z) -> w < x \/ y < z.
 Proof.
   intros HM w x y z H.
-  apply ex_or_or_ex, markov_sig_dn; trivial.
+  apply ex_or_or_ex, markov_sum_dn; trivial.
   - intro n.
     apply or_dec; apply QIlt_dec.
   - apply (dn_imp_dn (w < x \/ y < z)); trivial.

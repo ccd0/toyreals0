@@ -85,7 +85,7 @@ Definition nested (x : Stream Qinterval) :=
 Definition convergent (x : Stream Qinterval) :=
   (forall eps, eps > 0 -> exists k, width x.[k] < eps)%Q.
 
-Record R : Set := make {
+Record R : Set := make_R {
   bounds : Stream Qinterval;
   bounds_nonempty : nonempty bounds;
   bounds_nested : nested bounds;

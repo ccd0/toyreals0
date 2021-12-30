@@ -27,7 +27,7 @@ Declare Scope QI_scope.
 Delimit Scope QI_scope with QI.
 Bind Scope QI_scope with Qinterval.
 Local Open Scope QI_scope.
-Notation "[ a , b ]Q" := (make_Qinterval a b) (at level 0) : QI_scope.
+Notation "[ a , b ]Q" := (make_Qinterval a b) (at level 0, format "[ a ,  b ]Q") : QI_scope.
 Notation "s .[ k ]" := (Str_nth k s) (at level 2, left associativity, format "s .[ k ]") : QI_scope.
 
 Coercion QIcontents : Qinterval >-> set.

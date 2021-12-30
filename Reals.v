@@ -778,3 +778,12 @@ Add Morphism Q2R with signature (Qeq ==> eqv) as Q2R_mor.
 Proof.
   apply Q2R_eqv.
 Qed.
+
+Theorem bounds_correct : forall (x : R) k, Q2R (min x.[k]) <= x /\ x <= Q2R (max x.[k]).
+Proof.
+  intros x k.
+  split; intros [k2 HN];
+    setoid_rewrite Q2R_bounds_spec in HN;
+    contradict HN;
+    apply Qle_not_lt, bounds_consistent.
+Qed.

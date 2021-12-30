@@ -76,12 +76,20 @@ Proof.
   f_equal; auto.
 Qed.
 
+Definition nonempty (x : Stream Qinterval) :=
+  forall k, (min x.[k] <= max x.[k])%Q.
+
+Definition nested (x : Stream Qinterval) :=
+  forall k1 k2, (k2 >= k1)%nat -> (min x.[k2] >= min x.[k1] /\ max x.[k2] <= max x.[k1])%Q.
+
+Definition convergent (x : Stream Qinterval) :=
+  (forall eps, eps > 0 -> exists k, width x.[k] < eps)%Q.
+
 Record R : Set := make {
   bounds : Stream Qinterval;
-  bounds_min_le_max : forall k, (min bounds.[k] <= max bounds.[k])%Q;
-  bounds_stricter_min : forall k1 k2, (k2 >= k1)%nat -> (min bounds.[k2] >= min bounds.[k1])%Q;
-  bounds_stricter_max : forall k1 k2, (k2 >= k1)%nat -> (max bounds.[k2] <= max bounds.[k1])%Q;
-  bounds_convergent : (forall eps, eps > 0 -> exists k, width bounds.[k] < eps)%Q;
+  bounds_nonempty : nonempty bounds;
+  bounds_nested : nested bounds;
+  bounds_convergent : convergent bounds;
 }.
 
 Declare Scope R_scope.
@@ -96,30 +104,29 @@ Proof.
   intros x k1 k2.
   set (k3 := Nat.max k1 k2).
   apply (Qle_trans _ (min x.[k3])), (Qle_trans _ (max x.[k3])).
-  - apply bounds_stricter_min, Nat.le_max_l.
-  - apply bounds_min_le_max.
-  - apply bounds_stricter_max, Nat.le_max_r.
+  - apply bounds_nested, Nat.le_max_l.
+  - apply bounds_nonempty.
+  - apply bounds_nested, Nat.le_max_r.
 Qed.
 
 Lemma bounds_min_elem : forall (x : R) k, min x.[k] ∈ x.[k].
 Proof.
   intros x k.
   split; try q_order.
-  apply bounds_min_le_max.
+  apply bounds_nonempty.
 Qed.
 
 Lemma bounds_max_elem : forall (x : R) k, max x.[k] ∈ x.[k].
 Proof.
   intros x k.
   split; try q_order.
-  apply bounds_min_le_max.
+  apply bounds_nonempty.
 Qed.
 
 Lemma bounds_nested_elem : forall (x : R) k1 k2 r, (k2 >= k1)%nat -> r ∈ x.[k2] -> r ∈ x.[k1].
 Proof.
   intros x k1 k2 r Hk [H1 H2].
-  pose (bounds_stricter_min x k1 k2 Hk).
-  pose (bounds_stricter_max x k1 k2 Hk).
+  destruct (bounds_nested x k1 k2 Hk).
   split; q_order.
 Qed.
 
@@ -127,8 +134,8 @@ Lemma bounds_width_decr : forall (x : R) k1 k2, (k2 >= k1)%nat -> (width x.[k2] 
 Proof.
   intros x k1 k2 Hk.
   apply Qplus_le_compat.
-  - apply bounds_stricter_max, Hk.
-  - apply Qopp_le_compat, bounds_stricter_min, Hk.
+  - apply bounds_nested, Hk.
+  - apply Qopp_le_compat, bounds_nested, Hk.
 Qed.
 
 Definition QIlt (rs ss : Qinterval) := (max rs < min ss)%Q.
@@ -149,16 +156,16 @@ Proof.
   exists k3.
   apply (Qle_lt_trans _ (max x.[k1])), (Qlt_trans _ (min y.[k1])), (Qle_lt_trans _ (max y.[k2])), (Qlt_le_trans _ (min z.[k2]));
     trivial.
-  - apply bounds_stricter_max, Nat.le_max_l.
+  - apply bounds_nested, Nat.le_max_l.
   - apply bounds_consistent.
-  - apply bounds_stricter_min, Nat.le_max_r.
+  - apply bounds_nested, Nat.le_max_r.
 Defined.
 
 Theorem lt_irrefl : forall x, ~ x < x.
 Proof.
   intros x [k H].
   apply Qlt_not_le in H.
-  apply H, bounds_min_le_max.
+  apply H, bounds_nonempty.
 Qed.
 
 Theorem lt_not_gt : forall x y, x < y -> ~ x > y.

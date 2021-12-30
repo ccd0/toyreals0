@@ -1,5 +1,6 @@
 Require Import Coq.QArith.QArith.
 Require Import Coq.QArith.QOrderedType.
+Require Import Coq.QArith.Qminmax.
 Require Import Coq.Lists.Streams.
 Require Import Coq.Logic.ChoiceFacts.
 Require Import Coq.Logic.ConstructiveEpsilon.
@@ -787,3 +788,35 @@ Proof.
     contradict HN;
     apply Qle_not_lt, bounds_consistent.
 Qed.
+
+Lemma eqv_common_point1 :
+  forall x y, x == y -> forall k, let r := Qmax (min x.[k]) (min y.[k]) in r ∈ x.[k] /\ r ∈ y.[k].
+Proof.
+  intros x y H k r.
+  subst r.
+  split; split; try (apply Q.le_max_l || apply Q.le_max_r);
+    destruct (Q.max_spec (min x.[k]) (min y.[k])) as [[_ H2]|[_ H2]];
+    rewrite H2;
+    try apply bounds_consistent;
+    apply Qnot_lt_le;
+    intro H3; apply H;
+    [left|right]; exists k; exact H3.
+Qed.
+
+Lemma eqv_common_point2 : forall x y : R, (forall k, exists r, r ∈ x.[k] /\ r ∈ y.[k]) -> x == y.
+Proof.
+  intros x y H [[k HN]|[k HN]];
+    unfold QIlt in HN;
+    destruct (H k) as [r [[H1 H2] [H3 H4]]];
+    q_order.
+Qed.
+
+Lemma eqv_common_point : forall x y, x == y <-> (forall k, exists r, r ∈ x.[k] /\ r ∈ y.[k]).
+Proof.
+  intros x y.
+  split.
+  - intros H k.
+    exists (Qmax (min x.[k]) (min y.[k])).
+    apply eqv_common_point1; trivial.
+  - apply eqv_common_point2.
+Defined.

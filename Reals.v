@@ -4,6 +4,7 @@ Require Import Coq.QArith.Qminmax.
 Require Import Coq.Lists.Streams.
 Require Import Coq.Logic.ChoiceFacts.
 Require Import Coq.Logic.ConstructiveEpsilon.
+Require Import Coq.Bool.Sumbool.
 Global Close Scope Q_scope.
 Local Close Scope nat_scope.
 
@@ -647,7 +648,7 @@ Definition lt_or_dec (w x y z : R) (p : w < x \/ y < z) : {w < x} + {y < z} :=
 Definition compare (x y : R) (p : x =/= y) : {x < y} + {x > y} :=
   lt_or_dec x y y x p.
 
-Definition sum2bool {A B : Prop} (u : {A} + {B}) : bool := if u then true else false.
+Definition sum2bool {A B : Prop} (u : {A} + {B}) : bool := proj1_sig (bool_of_sumbool u).
 
 Theorem compare_compatible :
   forall x1 x2, x1 == x2 -> forall y1 y2, y1 == y2 -> forall p1 p2,

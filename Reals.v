@@ -694,3 +694,82 @@ Proof.
   - apply (dn_imp_dn (w < x \/ y < z)); trivial.
     apply or_ex_ex_or.
 Qed.
+
+Definition Q2R_bounds (r : Q) := make_Stream (fun k => [r, r]Q).
+
+Lemma Q2R_bounds_spec : forall r k, (Q2R_bounds r).[k] = [r, r]Q.
+Proof.
+  intros r k.
+  unfold Q2R_bounds.
+  rewrite make_Stream_spec.
+  trivial.
+Qed.
+
+Lemma Q2R_nonempty : forall r, nonempty (Q2R_bounds r).
+Proof.
+  intros r k.
+  rewrite Q2R_bounds_spec.
+  cbn.
+  q_order.
+Qed.
+
+Lemma Q2R_nested : forall r, nested (Q2R_bounds r).
+Proof.
+  intros r k1 k2 Hk.
+  repeat rewrite Q2R_bounds_spec.
+  split; q_order.
+Qed.
+
+Lemma Q2R_convergent : forall r, convergent (Q2R_bounds r).
+Proof.
+  intros r eps Heps.
+  exists 0%nat.
+  rewrite Q2R_bounds_spec.
+  setoid_rewrite Qplus_opp_r.
+  exact Heps.
+Defined.
+
+Definition Q2R (r : Q) := make_R (Q2R_bounds r) (Q2R_nonempty r) (Q2R_nested r) (Q2R_convergent r).
+
+Theorem Q2R_lt : forall r s, (r < s)%Q <-> Q2R r < Q2R s.
+Proof.
+  intros r s.
+  split; intro H.
+  - exists 0%nat.
+    setoid_rewrite Q2R_bounds_spec.
+    exact H.
+  - destruct H as [k H].
+    setoid_rewrite Q2R_bounds_spec in H.
+    exact H.
+Defined.
+
+Theorem Q2R_apart : forall r s, ~ (r == s)%Q <-> Q2R r =/= Q2R s.
+Proof.
+  intros r s.
+  split; intro H.
+  - destruct (QOrder.TO.lt_total r s) as [HC|[HC|HC]];
+      try (contradict H; apply HC);
+      [left|right]; exists 0%nat; exact HC.
+  - destruct H as [H|H]; apply Q2R_lt in H; q_order.
+Defined.
+
+Theorem Q2R_eqv : forall r s, (r == s)%Q <-> Q2R r == Q2R s.
+Proof.
+  intros r s.
+  split; intro H.
+  - unfold eqv.
+    rewrite <- Q2R_apart.
+    contradict H.
+    exact H.
+  - apply QOrder.not_neq_eq.
+    rewrite Q2R_apart.
+    exact H.
+Qed.
+
+Theorem Q2R_atm : forall r s, (r <= s)%Q <-> Q2R r <= Q2R s.
+Proof.
+  intros r s.
+  unfold atm.
+  rewrite <- Q2R_lt.
+  split; q_order.
+Qed.

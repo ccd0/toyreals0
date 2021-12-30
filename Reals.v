@@ -773,3 +773,8 @@ Proof.
   rewrite <- Q2R_lt.
   split; q_order.
 Qed.
+
+Add Morphism Q2R with signature (Qeq ==> eqv) as Q2R_mor.
+Proof.
+  apply Q2R_eqv.
+Qed.

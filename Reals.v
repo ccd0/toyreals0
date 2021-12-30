@@ -35,6 +35,47 @@ Coercion QIcontents : Qinterval >-> set.
 Definition width (xs : Qinterval) : Q :=
   max xs - min xs.
 
+CoFixpoint make_Stream' {A : Type} (f : nat -> A) (k : nat) : Stream A :=
+  Cons (f k) (make_Stream' f (S k)).
+
+Definition make_Stream {A : Type} (f : nat -> A) : Stream A :=
+  make_Stream' f 0.
+
+Lemma make_Stream_spec : forall A (f : nat -> A) k, (make_Stream f).[k] = f k.
+Proof.
+  intros A f k.
+  assert (forall n, (make_Stream' f n).[k] = f (n + k)%nat) as H; [|apply H].
+  unfold Str_nth.
+  induction k as [|k IH]; intro n; cbn; auto.
+  rewrite IH, Nat.add_succ_r; trivial.
+Qed.
+
+CoFixpoint make_Stream_rect' {A : Type} (x0 : A) (f : nat -> A -> A) (k : nat) : Stream A :=
+  Cons x0 (make_Stream_rect' (f k x0) f (S k)).
+
+Definition make_Stream_rect {A : Type} (x0 : A) (f : nat -> A -> A) : Stream A :=
+  make_Stream_rect' x0 f 0.
+
+Lemma make_Stream_rect_spec1 :
+  forall A (x0 : A) f, (make_Stream_rect x0 f).[0] = x0.
+Proof.
+  trivial.
+Qed.
+
+Lemma make_Stream_rect_spec2 :
+  forall A (x0 : A) f k, (make_Stream_rect x0 f).[S k] = f k (make_Stream_rect x0 f).[k].
+Proof.
+  intros A x0 f k.
+  revert x0.
+  assert (forall n x0, (make_Stream_rect' x0 f n).[S k] = f (n + k)%nat (make_Stream_rect' x0 f n).[k]) as H; [|apply H].
+  unfold Str_nth.
+  induction k as [|k IH]; intros n x0; cbn; [f_equal; auto|].
+  specialize (IH (S n)).
+  cbn in IH.
+  rewrite IH.
+  f_equal; auto.
+Qed.
+
 Record R : Set := make {
   bounds : Stream Qinterval;
   bounds_min_le_max : forall k, (min bounds.[k] <= max bounds.[k])%Q;

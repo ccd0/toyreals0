@@ -699,7 +699,7 @@ Qed.
 
 Definition Q2R_bounds (r : Q) := make_Stream (fun k => [r, r]Q).
 
-Lemma Q2R_bounds_spec : forall r k, (Q2R_bounds r).[k] = [r, r]Q.
+Lemma Q2R_nth : forall r k, (Q2R_bounds r).[k] = [r, r]Q.
 Proof.
   intros r k.
   unfold Q2R_bounds.
@@ -710,7 +710,7 @@ Qed.
 Lemma Q2R_nonempty : forall r, nonempty (Q2R_bounds r).
 Proof.
   intros r k.
-  rewrite Q2R_bounds_spec.
+  rewrite Q2R_nth.
   cbn.
   q_order.
 Qed.
@@ -718,7 +718,7 @@ Qed.
 Lemma Q2R_nested : forall r, nested (Q2R_bounds r).
 Proof.
   intros r k1 k2 Hk.
-  repeat rewrite Q2R_bounds_spec.
+  repeat rewrite Q2R_nth.
   split; q_order.
 Qed.
 
@@ -726,7 +726,7 @@ Lemma Q2R_convergent : forall r, convergent (Q2R_bounds r).
 Proof.
   intros r eps Heps.
   exists 0%nat.
-  rewrite Q2R_bounds_spec.
+  rewrite Q2R_nth.
   setoid_rewrite Qplus_opp_r.
   exact Heps.
 Defined.
@@ -738,10 +738,10 @@ Proof.
   intros r s.
   split; intro H.
   - exists 0%nat.
-    setoid_rewrite Q2R_bounds_spec.
+    setoid_rewrite Q2R_nth.
     exact H.
   - destruct H as [k H].
-    setoid_rewrite Q2R_bounds_spec in H.
+    setoid_rewrite Q2R_nth in H.
     exact H.
 Defined.
 
@@ -785,7 +785,7 @@ Theorem bounds_correct : forall (x : R) k, Q2R (min x.[k]) <= x /\ x <= Q2R (max
 Proof.
   intros x k.
   split; intros [k2 HN];
-    setoid_rewrite Q2R_bounds_spec in HN;
+    setoid_rewrite Q2R_nth in HN;
     contradict HN;
     apply Qle_not_lt, bounds_consistent.
 Qed.

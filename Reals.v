@@ -140,6 +140,13 @@ Proof.
   - apply Qopp_le_compat, bounds_nested, Hk.
 Qed.
 
+Lemma bounds_width_lt : forall (x : R) k1 k2 eps, (k2 >= k1)%nat -> (width x.[k1] < eps -> width x.[k2] < eps)%Q.
+Proof.
+  intros x k1 k2 eps Hk H.
+  apply (Qle_lt_trans _ (width x.[k1])); trivial.
+  apply bounds_width_decr; trivial.
+Qed.
+
 Definition QIlt (rs ss : Qinterval) := (max rs < min ss)%Q.
 
 Infix "<" := QIlt : QI_scope.
@@ -197,7 +204,7 @@ Proof.
   destruct H as [k1 [eps [Heps H]]].
   destruct (bounds_convergent z eps Heps) as [k2 Hk2].
   set (k3 := Nat.max k1 k2).
-  apply (Qle_lt_trans (width z.[k3])) in Hk2; [|apply bounds_width_decr, Nat.le_max_r].
+  apply (bounds_width_lt _ _ k3) in Hk2; [|apply Nat.le_max_r].
   destruct (Qlt_le_dec (max x.[k3]) (min z.[k3])) as [HC|HC].
   - right. exists k3. trivial.
   - left. exists k3.
@@ -821,3 +828,90 @@ Proof.
     apply eqv_common_point1; trivial.
   - apply eqv_common_point2.
 Defined.
+
+Definition QIplus rs ss := [Qred (min rs + min ss), Qred (max rs + max ss)]Q.
+Infix "+" := QIplus : QI_scope.
+
+Lemma QIplus_spec : forall r s (rs ss : Qinterval), r ∈ rs -> s ∈ ss -> (r + s)%Q ∈ rs + ss.
+Proof.
+  intros r s rs ss Hr Hs.
+  unfold is_element_of, QIcontents in *.
+  cbn -[Qplus].
+  repeat rewrite Qred_correct.
+  split; apply Qplus_le_compat; tauto.
+Qed.
+
+Definition plus_bounds (x y : R) := make_Stream (fun k => x.[k] + y.[k]).
+
+Lemma plus_nth : forall x y k, (plus_bounds x y).[k] = x.[k] + y.[k].
+Proof.
+  setoid_rewrite make_Stream_spec; trivial.
+Qed.
+
+Lemma plus_nonempty : forall x y, nonempty (plus_bounds x y).
+Proof.
+  intros x y k.
+  rewrite plus_nth.
+  cbn -[Qplus].
+  repeat rewrite Qred_correct.
+  apply Qplus_le_compat; apply bounds_nonempty.
+Qed.
+
+Lemma plus_nested : forall x y, nested (plus_bounds x y).
+Proof.
+  intros x y k1 k2 Hk.
+  repeat rewrite plus_nth.
+  cbn -[Qplus].
+  repeat rewrite Qred_correct.
+  split; apply Qplus_le_compat; apply bounds_nested, Hk.
+Qed.
+
+Lemma Qhalf_pos : forall r, (r > 0 -> r / 2 > 0)%Q.
+Proof.
+  intros r H.
+  apply (Qmult_lt_compat_r _ _ (/ 2)) in H; [|reflexivity].
+  setoid_replace (0 / 2)%Q with 0%Q in H; [|reflexivity].
+  exact H.
+Qed.
+
+Lemma plus_convergent' :
+  forall (x y : R) eps k1 k2,
+    (width x.[k1] < eps / 2 -> width y.[k2] < eps / 2 ->
+      width (plus_bounds x y).[Nat.max k1 k2] < eps)%Q.
+Proof.
+  intros x y eps k1 k2 H1 H2.
+  set (k3 := Nat.max k1 k2).
+  apply (bounds_width_lt _ _ k3) in H1, H2; try (apply Nat.le_max_l || apply Nat.le_max_r).
+  unfold width in *.
+  rewrite plus_nth.
+  cbn -[Qplus].
+  repeat rewrite Qred_correct.
+  setoid_replace ((max x.[k3] + max y.[k3]) - (min x.[k3] + min y.[k3]))%Q
+    with ((max x.[k3] - min x.[k3]) + (max y.[k3] - min y.[k3]))%Q by ring.
+  setoid_replace eps with (eps/2 + eps/2)%Q by field.
+  apply Qplus_lt_le_compat, Qlt_le_weak; trivial.
+Qed.
+
+Lemma plus_convergent : forall x y, convergent (plus_bounds x y).
+Proof.
+  intros x y eps Heps.
+  apply Qhalf_pos in Heps.
+  destruct (bounds_convergent x (eps/2)%Q Heps) as [k1 H1].
+  destruct (bounds_convergent y (eps/2)%Q Heps) as [k2 H2].
+  exists (Nat.max k1 k2).
+  apply plus_convergent'; trivial.
+Defined.
+
+Definition plus (x y : R) := make_R (plus_bounds x y) (plus_nonempty x y) (plus_nested x y) (plus_convergent x y).
+Infix "+" := plus : R_scope.
+
+Add Morphism plus with signature (eqv ==> eqv ==> eqv) as plus_mor.
+Proof.
+  intros x1 x2 Hx y1 y2 Hy.
+  rewrite eqv_common_point in *.
+  intro k.
+  destruct (Hx k) as [r Hr], (Hy k) as [s Hs].
+  exists (r + s)%Q.
+  setoid_rewrite plus_nth.
+  split; apply QIplus_spec; tauto.
+Qed.

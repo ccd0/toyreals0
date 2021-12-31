@@ -34,6 +34,48 @@ Notation "s .[ k ]" := (Str_nth k s) (at level 2, left associativity, format "s 
 
 Coercion QIcontents : Qinterval >-> set.
 
+Definition QIeq rs ss := (min rs == min ss /\ max rs == max ss)%Q.
+Infix "==" := QIeq : QI_scope.
+
+Lemma QIeq_refl : forall rs, (rs == rs)%QI.
+Proof.
+  intros.
+  split; apply Qeq_refl.
+Qed.
+
+Lemma QIeq_sym : forall rs ss, (rs == ss -> ss == rs)%QI.
+Proof.
+  unfold QIeq.
+  intros.
+  split; apply Qeq_sym; tauto.
+Qed.
+
+Lemma QIeq_trans : forall rs ss ts, (rs == ss -> ss == ts -> rs == ts)%QI.
+Proof.
+  unfold QIeq.
+  intros.
+  split; [apply (Qeq_trans _ (min ss))|apply (Qeq_trans _ (max ss))]; tauto.
+Qed.
+
+Add Relation Qinterval QIeq
+  reflexivity proved by QIeq_refl
+  symmetry proved by QIeq_sym
+  transitivity proved by QIeq_trans
+  as QIeq_rel.
+
+Add Morphism QIcontents with signature (QIeq ==> Qeq ==> iff) as QIcontents_mor.
+Proof.
+  intros i1 i2 [Hi1 Hi2] r1 r2 Hr.
+  unfold QIcontents.
+  rewrite Hi1, Hi2, Hr.
+  reflexivity.
+Qed.
+
+Add Morphism (@is_element_of Q) with signature (Qeq ==> (Qeq ==> iff) ==> iff) as is_element_of_mor_Q.
+Proof.
+  firstorder.
+Qed.
+
 Definition width (xs : Qinterval) : Q :=
   max xs - min xs.
 
@@ -740,6 +782,13 @@ Defined.
 
 Definition Q2R (r : Q) := make_R (Q2R_bounds r) (Q2R_nonempty r) (Q2R_nested r) (Q2R_convergent r).
 
+Lemma Q2R_in_nth : forall r k, r ∈ (Q2R r).[k].
+Proof.
+  intros.
+  setoid_rewrite Q2R_nth.
+  split; apply Qle_refl.
+Qed.
+
 Theorem Q2R_lt : forall r s, (r < s)%Q <-> Q2R r < Q2R s.
 Proof.
   intros r s.
@@ -905,6 +954,13 @@ Defined.
 Definition plus (x y : R) := make_R (plus_bounds x y) (plus_nonempty x y) (plus_nested x y) (plus_convergent x y).
 Infix "+" := plus : R_scope.
 
+Lemma plus_in_nth : forall r s (x y : R) k, r ∈ x.[k] -> s ∈ y.[k] -> (r + s)%Q ∈ (x + y).[k].
+Proof.
+  intros.
+  setoid_rewrite plus_nth.
+  apply QIplus_spec; trivial.
+Qed.
+
 Add Morphism plus with signature (eqv ==> eqv ==> eqv) as plus_mor.
 Proof.
   intros x1 x2 Hx y1 y2 Hy.
@@ -912,6 +968,48 @@ Proof.
   intro k.
   destruct (Hx k) as [r Hr], (Hy k) as [s Hs].
   exists (r + s)%Q.
-  setoid_rewrite plus_nth.
-  split; apply QIplus_spec; tauto.
+  split; apply plus_in_nth; tauto.
+Qed.
+
+Theorem plus_comm: forall x y, x + y == y + x.
+Proof.
+  intros x y.
+  apply eqv_common_point.
+  intro k.
+  exists ((min x.[k]) + (min y.[k]))%Q.
+  split; [|rewrite Qplus_comm]; apply plus_in_nth; apply bounds_min_elem.
+Qed.
+
+Theorem plus_assoc: forall x y z, (x + y) + z == x + (y + z).
+Proof.
+  intros x y z.
+  apply eqv_common_point.
+  intro k.
+  exists ((min x.[k]) + (min y.[k]) + (min z.[k]))%Q.
+  split; [|rewrite <- Qplus_assoc]; repeat apply plus_in_nth; apply bounds_min_elem.
+Qed.
+
+Theorem plus_0_r: forall x, x + Q2R 0 == x.
+Proof.
+  intro x.
+  apply eqv_common_point.
+  intro k.
+  exists (min x.[k]).
+  split; [rewrite <- Qplus_0_r; apply plus_in_nth, Q2R_in_nth|]; apply bounds_min_elem.
+Qed.
+
+Theorem plus_0_l: forall x, Q2R 0 + x == x.
+Proof.
+  intro x.
+  rewrite plus_comm.
+  apply plus_0_r.
+Qed.
+
+Theorem Q2R_plus : forall r s, Q2R (r + s) == Q2R r + Q2R s.
+Proof.
+  intros r s.
+  apply eqv_common_point.
+  intro k.
+  exists (r + s)%Q.
+  split; [|apply plus_in_nth]; apply Q2R_in_nth.
 Qed.

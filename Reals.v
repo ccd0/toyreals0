@@ -878,6 +878,22 @@ Proof.
   - apply eqv_common_point2.
 Defined.
 
+Lemma eqv_fromQ : forall x y : R, (forall k, exists r s, (r ∈ x.[k] /\ s ∈ y.[k]) /\ r == s)%Q -> x == y.
+Proof.
+  intros x y H.
+  apply eqv_common_point2.
+  intro k.
+  destruct (H k) as [r [s [H1 H2]]].
+  exists r.
+  rewrite H2 at 2.
+  exact H1.
+Qed.
+
+Create HintDb fromQ.
+Global Hint Resolve bounds_min_elem | 2 : fromQ.
+Global Hint Resolve Q2R_in_nth | 1 : fromQ.
+Ltac fromQ := intros; apply eqv_fromQ; intro k; eexists; eexists; split; [split; auto with fromQ|try field].
+
 Definition QIplus rs ss := [Qred (min rs + min ss), Qred (max rs + max ss)]Q.
 Infix "+" := QIplus : QI_scope.
 
@@ -960,6 +976,7 @@ Proof.
   setoid_rewrite plus_nth.
   apply QIplus_spec; trivial.
 Qed.
+Global Hint Resolve plus_in_nth | 1 : fromQ.
 
 Add Morphism plus with signature (eqv ==> eqv ==> eqv) as plus_mor.
 Proof.
@@ -972,47 +989,19 @@ Proof.
 Qed.
 
 Theorem plus_comm: forall x y, x + y == y + x.
-Proof.
-  intros x y.
-  apply eqv_common_point.
-  intro k.
-  exists ((min x.[k]) + (min y.[k]))%Q.
-  split; [|rewrite Qplus_comm]; apply plus_in_nth; apply bounds_min_elem.
-Qed.
+Proof. fromQ. Qed.
 
 Theorem plus_assoc: forall x y z, (x + y) + z == x + (y + z).
-Proof.
-  intros x y z.
-  apply eqv_common_point.
-  intro k.
-  exists ((min x.[k]) + (min y.[k]) + (min z.[k]))%Q.
-  split; [|rewrite <- Qplus_assoc]; repeat apply plus_in_nth; apply bounds_min_elem.
-Qed.
+Proof. fromQ. Qed.
 
 Theorem plus_0_r: forall x, x + Q2R 0 == x.
-Proof.
-  intro x.
-  apply eqv_common_point.
-  intro k.
-  exists (min x.[k]).
-  split; [rewrite <- Qplus_0_r; apply plus_in_nth, Q2R_in_nth|]; apply bounds_min_elem.
-Qed.
+Proof. fromQ. Qed.
 
 Theorem plus_0_l: forall x, Q2R 0 + x == x.
-Proof.
-  intro x.
-  rewrite plus_comm.
-  apply plus_0_r.
-Qed.
+Proof. fromQ. Qed.
 
 Theorem Q2R_plus : forall r s, Q2R (r + s) == Q2R r + Q2R s.
-Proof.
-  intros r s.
-  apply eqv_common_point.
-  intro k.
-  exists (r + s)%Q.
-  split; [|apply plus_in_nth]; apply Q2R_in_nth.
-Qed.
+Proof. fromQ. Qed.
 
 Definition QIopp rs := [-max rs, -min rs]Q.
 Notation "- x" := (QIopp x) : QI_scope.
@@ -1073,6 +1062,7 @@ Proof.
   setoid_rewrite opp_nth.
   apply QIopp_spec; trivial.
 Qed.
+Global Hint Resolve opp_in_nth | 1 : fromQ.
 
 Add Morphism opp with signature (eqv ==> eqv) as opp_mor.
 Proof.
@@ -1085,55 +1075,19 @@ Proof.
 Qed.
 
 Theorem Q2R_opp : forall r, Q2R (- r) == - Q2R r.
-Proof.
-  intro r.
-  apply eqv_common_point.
-  intro k.
-  exists (- r)%Q.
-  split; [|apply opp_in_nth]; apply Q2R_in_nth.
-Qed.
+Proof. fromQ. Qed.
 
 Theorem plus_opp_0_r : forall x, x + (- x) == Q2R 0.
-Proof.
-  intro x.
-  apply eqv_common_point.
-  intro k.
-  exists 0%Q.
-  split; [|apply Q2R_in_nth].
-  set (r := min x.[k]).
-  setoid_replace 0%Q with (r + (- r))%Q by ring.
-  apply plus_in_nth, opp_in_nth; apply bounds_min_elem.
-Qed.
+Proof. fromQ. Qed.
 
 Theorem plus_opp_0_l : forall x, (- x) + x == Q2R 0.
-Proof.
-  intro x.
-  rewrite plus_comm.
-  apply plus_opp_0_r.
-Qed.
+Proof. fromQ. Qed.
 
 Theorem opp_opp : forall x, - (- x) == x.
-Proof.
-  intro x.
-  apply eqv_common_point.
-  intro k.
-  exists (min x.[k]).
-  split; [|apply bounds_min_elem].
-  rewrite <- Qopp_opp.
-  repeat apply opp_in_nth; apply bounds_min_elem.
-Qed.
+Proof. fromQ. Qed.
 
 Theorem opp_plus : forall x y, - (x + y) == (- x) + (- y).
-Proof.
-  intros x y.
-  apply eqv_common_point.
-  intro k.
-  set (r := min x.[k]).
-  set (s := min y.[k]).
-  exists (- (r + s))%Q.
-  setoid_replace (- (r + s))%Q with ((- r) + (- s))%Q at 2 by ring.
-  split; repeat (apply opp_in_nth || apply plus_in_nth); apply bounds_min_elem.
-Qed.
+Proof. fromQ. Qed.
 
 Definition minus (x y : R) := x + (- y).
 Infix "-" := minus : R_scope.
@@ -1146,21 +1100,19 @@ Proof.
   reflexivity.
 Qed.
 
-Theorem plus_minus : forall x y, (x + y) - y == x.
+Lemma minus_in_nth : forall r s (x y : R) k, r ∈ x.[k] -> s ∈ y.[k] -> (r - s)%Q ∈ (x - y).[k].
 Proof.
-  intros x y.
-  unfold minus.
-  rewrite plus_assoc, plus_opp_0_r, plus_0_r.
-  reflexivity.
+  intros.
+  unfold minus, Qminus.
+  auto with fromQ.
 Qed.
+Global Hint Resolve minus_in_nth | 1 : fromQ.
+
+Theorem plus_minus : forall x y, (x + y) - y == x.
+Proof. fromQ. Qed.
 
 Theorem minus_plus : forall x y, (x - y) + y == x.
-Proof.
-  intros x y.
-  unfold minus.
-  rewrite plus_assoc, plus_opp_0_l, plus_0_r.
-  reflexivity.
-Qed.
+Proof. fromQ. Qed.
 
 Theorem minus_shift : forall x y z, x - y == z <-> x == z + y.
 Proof.

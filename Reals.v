@@ -1013,3 +1013,124 @@ Proof.
   exists (r + s)%Q.
   split; [|apply plus_in_nth]; apply Q2R_in_nth.
 Qed.
+
+Definition QIopp rs := [-max rs, -min rs]Q.
+Notation "- x" := (QIopp x) : QI_scope.
+
+Lemma QIopp_spec : forall r (rs : Qinterval), r ∈ rs -> (- r)%Q ∈ - rs.
+Proof.
+  intros r rs [H1 H2].
+  split; apply Qopp_le_compat; trivial.
+Qed.
+
+Definition opp_bounds (x : R) := make_Stream (fun k => - x.[k]).
+
+Lemma opp_nth : forall x k, (opp_bounds x).[k] = - x.[k].
+Proof.
+  setoid_rewrite make_Stream_spec; trivial.
+Qed.
+
+Lemma opp_nonempty : forall x, nonempty (opp_bounds x).
+  intros x k.
+  rewrite opp_nth.
+  apply Qopp_le_compat, bounds_nonempty.
+Qed.
+
+Lemma opp_nested : forall x, nested (opp_bounds x).
+  intros x k1 k2 Hk.
+  repeat rewrite opp_nth.
+  split; apply Qopp_le_compat, bounds_nested, Hk.
+Qed.
+
+Lemma QIopp_width : forall rs, (width (- rs) == width rs)%Q.
+  intro rs.
+  setoid_rewrite Qplus_comm at 1.
+  setoid_rewrite Qopp_opp.
+  reflexivity.
+Qed.
+
+Lemma opp_convergent' :
+  forall (x : R) k eps, (width x.[k] < eps -> width (opp_bounds x).[k] < eps)%Q.
+Proof.
+  intros x k eps H.
+  rewrite opp_nth, QIopp_width.
+  exact H.
+Qed.
+
+Lemma opp_convergent : forall x, convergent (opp_bounds x).
+  intros x eps Heps.
+  destruct (bounds_convergent x eps Heps) as [k H].
+  exists k.
+  apply opp_convergent', H.
+Defined.
+
+Definition opp (x : R) := make_R (opp_bounds x) (opp_nonempty x) (opp_nested x) (opp_convergent x).
+Notation "- x" := (opp x) : R_scope.
+
+Lemma opp_in_nth : forall r (x : R) k, r ∈ x.[k] -> (- r)%Q ∈ (- x).[k].
+Proof.
+  intros.
+  setoid_rewrite opp_nth.
+  apply QIopp_spec; trivial.
+Qed.
+
+Add Morphism opp with signature (eqv ==> eqv) as opp_mor.
+Proof.
+  intros x1 x2 Hx.
+  rewrite eqv_common_point in *.
+  intro k.
+  destruct (Hx k) as [r Hr].
+  exists (- r)%Q.
+  split; apply opp_in_nth; tauto.
+Qed.
+
+Theorem Q2R_opp : forall r, Q2R (- r) == - Q2R r.
+Proof.
+  intro r.
+  apply eqv_common_point.
+  intro k.
+  exists (- r)%Q.
+  split; [|apply opp_in_nth]; apply Q2R_in_nth.
+Qed.
+
+Theorem plus_opp_0_r : forall x, x + (- x) == Q2R 0.
+Proof.
+  intro x.
+  apply eqv_common_point.
+  intro k.
+  exists 0%Q.
+  split; [|apply Q2R_in_nth].
+  set (r := min x.[k]).
+  setoid_replace 0%Q with (r + (- r))%Q by ring.
+  apply plus_in_nth, opp_in_nth; apply bounds_min_elem.
+Qed.
+
+Theorem plus_opp_0_l : forall x, (- x) + x == Q2R 0.
+Proof.
+  intro x.
+  rewrite plus_comm.
+  apply plus_opp_0_r.
+Qed.
+
+Theorem opp_opp : forall x, - (- x) == x.
+Proof.
+  intro x.
+  apply eqv_common_point.
+  intro k.
+  exists (min x.[k]).
+  split; [|apply bounds_min_elem].
+  rewrite <- Qopp_opp.
+  repeat apply opp_in_nth; apply bounds_min_elem.
+Qed.
+
+Theorem opp_plus : forall x y, - (x + y) == (- x) + (- y).
+Proof.
+  intros x y.
+  apply eqv_common_point.
+  intro k.
+  set (r := min x.[k]).
+  set (s := min y.[k]).
+  exists (- (r + s))%Q.
+  setoid_replace (- (r + s))%Q with ((- r) + (- s))%Q at 2 by ring.
+  split; repeat (apply opp_in_nth || apply plus_in_nth); apply bounds_min_elem.
+Qed.

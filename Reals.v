@@ -1124,3 +1124,165 @@ Proof.
   - rewrite H.
     apply plus_minus.
 Qed.
+
+Lemma lt_plus_r1' : forall x y z k, ((x + z)%R.[k] < (y + z)%R.[k] -> x.[k] < y.[k])%QI.
+Proof.
+  intros x y z k H.
+  apply (Qplus_lt_l _ _ (min z.[k])).
+  apply (Qle_lt_trans _ (max x.[k] + max z.[k])).
+  - apply Qplus_le_r, bounds_nonempty.
+  - setoid_rewrite plus_nth in H.
+    unfold QIplus, QIlt in H.
+    setoid_rewrite Qred_correct in H.
+    exact H.
+Qed.
+
+Lemma lt_plus_r1 : forall x y z, x + z < y + z -> x < y.
+Proof.
+  intros x y z [k H].
+  exists k.
+  exact (lt_plus_r1' x y z k H).
+Defined.
+
+Theorem lt_plus_r2 : forall x y z, x < y -> x + z < y + z.
+Proof.
+  intros x y z H.
+  apply (lt_plus_r1 _ _ (- z)).
+  revert H.
+  apply lt_mor_Proper; apply plus_minus.
+Defined.
+
+Theorem lt_plus_r : forall x y z, x < y <-> x + z < y + z.
+Proof.
+  intros.
+  split; [apply lt_plus_r2|apply lt_plus_r1].
+Defined.
+
+Theorem atm_plus_r : forall x y z, x <= y <-> x + z <= y + z.
+Proof.
+  intros.
+  apply Morphisms_Prop.not_iff_morphism; apply lt_plus_r.
+Qed.
+
+Theorem apart_plus_r : forall x y z, x =/= y <-> x + z =/= y + z.
+Proof.
+  intros.
+  apply Morphisms_Prop.or_iff_morphism; apply lt_plus_r.
+Defined.
+
+Theorem eqv_plus_r : forall x y z, x == y <-> x + z == y + z.
+Proof.
+  intros.
+  apply Morphisms_Prop.not_iff_morphism; apply apart_plus_r.
+Qed.
+
+Lemma iff_trans : forall A B C : Prop, A <-> B -> B <-> C -> A <-> C.
+Proof. tauto. Defined.
+
+Theorem lt_plus_l : forall x y z, x < y <-> z + x < z + y.
+Proof.
+  intros.
+  apply (iff_trans _ (x + z < y + z)).
+  - apply lt_plus_r.
+  - apply lt_mor_Proper; apply plus_comm.
+Defined.
+
+Theorem atm_plus_l : forall x y z, x <= y <-> z + x <= z + y.
+Proof.
+  intros.
+  apply Morphisms_Prop.not_iff_morphism; apply lt_plus_l.
+Qed.
+
+Theorem apart_plus_l : forall x y z, x =/= y <-> z + x =/= z + y.
+Proof.
+  intros.
+  apply Morphisms_Prop.or_iff_morphism; apply lt_plus_l.
+Defined.
+
+Theorem eqv_plus_l : forall x y z, x == y <-> z + x == z + y.
+Proof.
+  intros.
+  apply Morphisms_Prop.not_iff_morphism; apply apart_plus_l.
+Qed.
+
+Theorem lt_plus : forall w x y z, w < x -> y < z -> w + y < x + z.
+Proof.
+  intros w x y z H1 H2.
+  apply (lt_trans _ (x + y)); [apply lt_plus_r|apply lt_plus_l]; trivial.
+Defined.
+
+Theorem lt_atm_plus : forall w x y z, w < x -> y <= z -> w + y < x + z.
+Proof.
+  intros w x y z H1 H2.
+  apply (lt_atm_trans _ (x + y)); [apply lt_plus_r|apply atm_plus_l]; trivial.
+Defined.
+
+Theorem atm_lt_plus : forall w x y z, w <= x -> y < z -> w + y < x + z.
+Proof.
+  intros w x y z H1 H2.
+  apply (atm_lt_trans _ (x + y)); [apply atm_plus_r|apply lt_plus_l]; trivial.
+Defined.
+
+Theorem atm_plus : forall w x y z, w <= x -> y <= z -> w + y <= x + z.
+Proof.
+  intros w x y z H1 H2.
+  apply (atm_trans _ (x + y)); [apply atm_plus_r|apply atm_plus_l]; trivial.
+Qed.
+
+Lemma Qlt_opp : forall r s, (r < s <-> - r > - s)%Q.
+Proof.
+  intros r s.
+  split; intro H;
+    apply Qnot_le_lt; apply Qlt_not_le in H;
+    contradict H;
+    [setoid_rewrite <- Qopp_opp|];
+    apply Qopp_le_compat, H.
+Qed.
+
+Lemma lt_opp1' : forall (x y : R) k, (x.[k] < y.[k] -> (- x)%R.[k] > (- y)%R.[k])%QI.
+Proof.
+  intros x y k H.
+  setoid_rewrite opp_nth.
+  revert H.
+  apply Qlt_opp.
+Qed.
+
+Lemma lt_opp1 : forall x y, x < y -> - x > - y.
+Proof.
+  intros x y [k H].
+  exists k.
+  apply lt_opp1', H.
+Defined.
+
+Lemma lt_opp2 : forall x y, - x < - y -> x > y.
+Proof.
+  intros x y H.
+  apply lt_opp1 in H.
+  revert H.
+  apply (lt_mor_Proper (- (- y))); apply opp_opp.
+Defined.
+
+Theorem lt_opp : forall x y, x < y <-> - x > - y.
+Proof.
+  intros; split; [apply lt_opp1|apply lt_opp2].
+Defined.
+
+Theorem atm_opp : forall x y, x <= y <-> - x >= - y.
+Proof.
+  intros.
+  apply Morphisms_Prop.not_iff_morphism; apply lt_opp.
+Qed.
+
+Theorem apart_opp : forall x y, x =/= y <-> - x =/= - y.
+Proof.
+  intros.
+  apply (iff_trans _ (y =/= x)).
+  - split; apply apart_sym.
+  - apply Morphisms_Prop.or_iff_morphism; apply lt_opp.
+Defined.
+
+Theorem eqv_opp : forall x y, x == y <-> - x == - y.
+Proof.
+  intros.
+  apply Morphisms_Prop.not_iff_morphism; apply apart_opp.
+Qed.

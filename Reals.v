@@ -1134,3 +1134,41 @@ Proof.
   setoid_replace (- (r + s))%Q with ((- r) + (- s))%Q at 2 by ring.
   split; repeat (apply opp_in_nth || apply plus_in_nth); apply bounds_min_elem.
 Qed.
+
+Definition minus (x y : R) := x + (- y).
+Infix "-" := minus : R_scope.
+
+Add Morphism minus with signature (eqv ==> eqv ==> eqv) as minus_mor.
+Proof.
+  intros x1 x2 Hx y1 y2 Hy.
+  unfold minus.
+  rewrite Hx, Hy.
+  reflexivity.
+Qed.
+
+Theorem plus_minus : forall x y, (x + y) - y == x.
+Proof.
+  intros x y.
+  unfold minus.
+  rewrite plus_assoc, plus_opp_0_r, plus_0_r.
+  reflexivity.
+Qed.
+
+Theorem minus_plus : forall x y, (x - y) + y == x.
+Proof.
+  intros x y.
+  unfold minus.
+  rewrite plus_assoc, plus_opp_0_l, plus_0_r.
+  reflexivity.
+Qed.
+
+Theorem minus_shift : forall x y z, x - y == z <-> x == z + y.
+Proof.
+  intros x y z.
+  split; intro H.
+  - rewrite <- H.
+    symmetry.
+    apply minus_plus.
+  - rewrite H.
+    apply plus_minus.
+Qed.

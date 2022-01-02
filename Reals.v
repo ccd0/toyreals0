@@ -120,18 +120,14 @@ Proof.
   f_equal; auto.
 Qed.
 
-Definition nonempty (x : Stream Qinterval) :=
-  forall k, (min x.[k] <= max x.[k])%Q.
-
 Definition nested (x : Stream Qinterval) :=
-  forall k1 k2, (k2 >= k1)%nat -> (min x.[k2] >= min x.[k1] /\ max x.[k2] <= max x.[k1])%Q.
+  forall k1 k2, (k2 >= k1)%nat -> min x.[k2] ∈ x.[k1] /\ max x.[k2] ∈ x.[k1].
 
 Definition convergent (x : Stream Qinterval) :=
   (forall eps, eps > 0 -> exists k, width x.[k] < eps)%Q.
 
 Record R : Set := make_R {
   bounds : Stream Qinterval;
-  bounds_nonempty : nonempty bounds;
   bounds_nested : nested bounds;
   bounds_convergent : convergent bounds;
 }.
@@ -146,31 +142,33 @@ Coercion bounds : R >-> Stream.
 Lemma bounds_consistent : forall (x : R) k1 k2, (min x.[k1] <= max x.[k2])%Q.
 Proof.
   intros x k1 k2.
-  set (k3 := Nat.max k1 k2).
-  apply (Qle_trans _ (min x.[k3])), (Qle_trans _ (max x.[k3])).
-  - apply bounds_nested, Nat.le_max_l.
-  - apply bounds_nonempty.
-  - apply bounds_nested, Nat.le_max_r.
+  destruct (Nat.le_ge_cases k1 k2) as [H|H];
+    apply (bounds_nested x) in H;
+    unfold is_element_of, QIcontents in H;
+    tauto.
+Qed.
+
+Lemma bounds_nonempty : forall (x : R) k, (min x.[k] <= max x.[k])%Q.
+  intros x k.
+  apply bounds_nested, Peano.le_n.
 Qed.
 
 Lemma bounds_min_elem : forall (x : R) k, min x.[k] ∈ x.[k].
 Proof.
   intros x k.
-  split; try q_order.
-  apply bounds_nonempty.
+  apply bounds_nested, Peano.le_n.
 Qed.
 
 Lemma bounds_max_elem : forall (x : R) k, max x.[k] ∈ x.[k].
 Proof.
   intros x k.
-  split; try q_order.
-  apply bounds_nonempty.
+  apply bounds_nested, Peano.le_n.
 Qed.
 
 Lemma bounds_nested_elem : forall (x : R) k1 k2 r, (k2 >= k1)%nat -> r ∈ x.[k2] -> r ∈ x.[k1].
 Proof.
   intros x k1 k2 r Hk [H1 H2].
-  destruct (bounds_nested x k1 k2 Hk).
+  destruct (bounds_nested x k1 k2 Hk) as [[H3 _] [_ H4]].
   split; q_order.
 Qed.
 
@@ -756,19 +754,11 @@ Proof.
   trivial.
 Qed.
 
-Lemma Q2R_nonempty : forall r, nonempty (Q2R_bounds r).
-Proof.
-  intros r k.
-  rewrite Q2R_nth.
-  cbn.
-  q_order.
-Qed.
-
 Lemma Q2R_nested : forall r, nested (Q2R_bounds r).
 Proof.
   intros r k1 k2 Hk.
   repeat rewrite Q2R_nth.
-  split; q_order.
+  repeat split; cbn; q_order.
 Qed.
 
 Lemma Q2R_convergent : forall r, convergent (Q2R_bounds r).
@@ -780,7 +770,7 @@ Proof.
   exact Heps.
 Defined.
 
-Definition Q2R (r : Q) := make_R (Q2R_bounds r) (Q2R_nonempty r) (Q2R_nested r) (Q2R_convergent r).
+Definition Q2R (r : Q) := make_R (Q2R_bounds r) (Q2R_nested r) (Q2R_convergent r).
 
 Lemma Q2R_in_nth : forall r k, r ∈ (Q2R r).[k].
 Proof.
@@ -913,22 +903,13 @@ Proof.
   setoid_rewrite make_Stream_spec; trivial.
 Qed.
 
-Lemma plus_nonempty : forall x y, nonempty (plus_bounds x y).
-Proof.
-  intros x y k.
-  rewrite plus_nth.
-  cbn -[Qplus].
-  repeat rewrite Qred_correct.
-  apply Qplus_le_compat; apply bounds_nonempty.
-Qed.
-
 Lemma plus_nested : forall x y, nested (plus_bounds x y).
 Proof.
   intros x y k1 k2 Hk.
   repeat rewrite plus_nth.
   cbn -[Qplus].
   repeat rewrite Qred_correct.
-  split; apply Qplus_le_compat; apply bounds_nested, Hk.
+  split; apply QIplus_spec; apply bounds_nested, Hk.
 Qed.
 
 Lemma Qhalf_pos : forall r, (r > 0 -> r / 2 > 0)%Q.
@@ -967,7 +948,7 @@ Proof.
   apply plus_convergent'; trivial.
 Defined.
 
-Definition plus (x y : R) := make_R (plus_bounds x y) (plus_nonempty x y) (plus_nested x y) (plus_convergent x y).
+Definition plus (x y : R) := make_R (plus_bounds x y) (plus_nested x y) (plus_convergent x y).
 Infix "+" := plus : R_scope.
 
 Lemma plus_in_nth : forall r s (x y : R) k, r ∈ x.[k] -> s ∈ y.[k] -> (r + s)%Q ∈ (x + y).[k].
@@ -1019,16 +1000,10 @@ Proof.
   setoid_rewrite make_Stream_spec; trivial.
 Qed.
 
-Lemma opp_nonempty : forall x, nonempty (opp_bounds x).
-  intros x k.
-  rewrite opp_nth.
-  apply Qopp_le_compat, bounds_nonempty.
-Qed.
-
 Lemma opp_nested : forall x, nested (opp_bounds x).
   intros x k1 k2 Hk.
   repeat rewrite opp_nth.
-  split; apply Qopp_le_compat, bounds_nested, Hk.
+  split; apply QIopp_spec, bounds_nested, Hk.
 Qed.
 
 Lemma QIopp_width : forall rs, (width (- rs) == width rs)%Q.
@@ -1053,7 +1028,7 @@ Lemma opp_convergent : forall x, convergent (opp_bounds x).
   apply opp_convergent', H.
 Defined.
 
-Definition opp (x : R) := make_R (opp_bounds x) (opp_nonempty x) (opp_nested x) (opp_convergent x).
+Definition opp (x : R) := make_R (opp_bounds x) (opp_nested x) (opp_convergent x).
 Notation "- x" := (opp x) : R_scope.
 
 Lemma opp_in_nth : forall r (x : R) k, r ∈ x.[k] -> (- r)%Q ∈ (- x).[k].

@@ -1,6 +1,7 @@
 Require Import Coq.QArith.QArith.
 Require Import Coq.QArith.QOrderedType.
 Require Import Coq.QArith.Qminmax.
+Require Import Coq.QArith.Qabs.
 Require Import Coq.Lists.Streams.
 Require Import Coq.Logic.ChoiceFacts.
 Require Import Coq.Logic.ConstructiveEpsilon.
@@ -79,6 +80,15 @@ Qed.
 Definition width (xs : Qinterval) : Q :=
   max xs - min xs.
 
+Definition nonempty (xs : Qinterval) : Prop :=
+  (min xs <= max xs)%Q.
+
+Lemma nonempty_min_max : forall xs, nonempty xs -> min xs ∈ xs /\ max xs ∈ xs.
+Proof.
+  intros xs H.
+  repeat split; trivial; q_order.
+Qed.
+
 CoFixpoint make_Stream' {A : Type} (f : nat -> A) (k : nat) : Stream A :=
   Cons (f k) (make_Stream' f (S k)).
 
@@ -148,7 +158,7 @@ Proof.
     tauto.
 Qed.
 
-Lemma bounds_nonempty : forall (x : R) k, (min x.[k] <= max x.[k])%Q.
+Lemma bounds_nonempty : forall (x : R) k, nonempty x.[k].
   intros x k.
   apply bounds_nested, Peano.le_n.
 Qed.
@@ -920,6 +930,12 @@ Proof.
   exact H.
 Qed.
 
+Lemma Qplus_lt_compat: forall x y z t, (x < y -> z < t -> x + z < y + t)%Q.
+Proof.
+  intros.
+  apply Qplus_lt_le_compat, Qlt_le_weak; trivial.
+Qed.
+
 Lemma plus_convergent' :
   forall (x y : R) eps k1 k2,
     (width x.[k1] < eps / 2 -> width y.[k2] < eps / 2 ->
@@ -935,7 +951,7 @@ Proof.
   setoid_replace ((max x.[k3] + max y.[k3]) - (min x.[k3] + min y.[k3]))%Q
     with ((max x.[k3] - min x.[k3]) + (max y.[k3] - min y.[k3]))%Q by ring.
   setoid_replace eps with (eps/2 + eps/2)%Q by field.
-  apply Qplus_lt_le_compat, Qlt_le_weak; trivial.
+  apply Qplus_lt_compat; trivial.
 Qed.
 
 Lemma plus_convergent : forall x y, convergent (plus_bounds x y).
@@ -1261,3 +1277,275 @@ Proof.
   intros.
   apply Morphisms_Prop.not_iff_morphism; apply apart_opp.
 Qed.
+
+Lemma Qle_or_ge : forall r s, (r <= s \/ r >= s)%Q.
+Proof.
+  intros r s.
+  destruct (Qlt_le_dec r s) as [H|H]; [left; apply Qlt_le_weak|right]; exact H.
+Defined.
+
+Lemma Qmult_le_neg_r : forall x y z, (x <= y -> z <= 0 -> x * z >= y * z)%Q.
+Proof.
+  intros x y z H1 H2.
+  setoid_rewrite <- Qopp_opp.
+  apply Qopp_le_compat.
+  apply Qopp_le_compat in H2.
+  setoid_replace (- (x * z))%Q with (x * (- z))%Q by ring.
+  setoid_replace (- (y * z))%Q with (y * (- z))%Q by ring.
+  setoid_replace (- 0)%Q with 0%Q in H2 by ring.
+  apply Qmult_le_compat_r; trivial.
+Qed.
+
+Lemma Qmult_between_r : forall r a b c, (a <= r <= b -> Qmin (a*c) (b*c) <= r*c <= Qmax (a*c) (b*c))%Q.
+Proof.
+  intros r a b c [H1 H2].
+  destruct (Qle_or_ge 0 c) as [Hc|Hc]; split;
+    eapply Qle_trans;
+    try (apply Qmult_le_compat_r; eassumption);
+    try (apply Qmult_le_neg_r; eassumption);
+    [apply Q.le_min_l|apply Q.le_max_r|apply Q.le_min_r|apply Q.le_max_l].
+Qed.
+
+Lemma Qmult_between_l : forall r a b c, (a <= r <= b -> Qmin (c*a) (c*b) <= c*r <= Qmax (c*a) (c*b))%Q.
+Proof.
+  intros.
+  setoid_rewrite Qmult_comm.
+  apply Qmult_between_r, H.
+Qed.
+
+Definition QImult rs ss :=
+  [Qred (Qmin (Qmin (min rs * min ss) (min rs * max ss)) (Qmin (max rs * min ss) (max rs * max ss))),
+   Qred (Qmax (Qmax (min rs * min ss) (min rs * max ss)) (Qmax (max rs * min ss) (max rs * max ss)))]Q.
+Infix "*" := QImult : QI_scope.
+
+Lemma QImult_spec1 : forall r s (rs ss : Qinterval), r ∈ rs -> s ∈ ss -> (r * s)%Q ∈ rs * ss.
+Proof.
+  intros r s rs ss Hr Hs.
+  unfold is_element_of, QIcontents in *.
+  setoid_rewrite Qred_correct.
+  split.
+  - apply (Qle_trans _ (Qmin (min rs * s) (max rs * s))).
+    + apply Q.min_glb;
+        (eapply Qle_trans; [|apply Qmult_between_l; eassumption]);
+        [apply Q.le_min_l|apply Q.le_min_r].
+    + apply Qmult_between_r, Hr.
+  - apply (Qle_trans _ (Qmax (min rs * s) (max rs * s))).
+    + apply Qmult_between_r, Hr.
+    + apply Q.max_lub;
+        (eapply Qle_trans; [apply Qmult_between_l; eassumption|]);
+        [apply Q.le_max_l|apply Q.le_max_r].
+Qed.
+
+Lemma QImult_spec2 :
+  forall rs ss : Qinterval, nonempty rs -> nonempty ss ->
+    (exists r s, r ∈ rs /\ s ∈ ss /\ (min (rs * ss) == r * s)%Q) /\
+    (exists r s, r ∈ rs /\ s ∈ ss /\ (max (rs * ss) == r * s)%Q).
+Proof.
+  intros rs ss Hrs Hss.
+  cbn.
+  split;
+    [
+      unfold Qmin at 1, GenericMinMax.gmin;
+      destruct (Qmin (min rs * min ss) (min rs * max ss) ?= Qmin (max rs * min ss) (max rs * max ss))%Q
+    |
+      unfold Qmax at 1, GenericMinMax.gmax;
+      destruct (Qmax (min rs * min ss) (min rs * max ss) ?= Qmax (max rs * min ss) (max rs * max ss))%Q
+    ];
+    unfold Qmin, GenericMinMax.gmin, Qmax, GenericMinMax.gmax;
+    try (
+      destruct (min rs * min ss ?= min rs * max ss)%Q;
+        eexists; eexists; (split; [|split]; [| |apply Qred_correct]; apply nonempty_min_max; assumption)
+    );
+    destruct (max rs * min ss ?= max rs * max ss)%Q;
+      eexists; eexists; (split; [|split]; [| |apply Qred_correct]; apply nonempty_min_max; assumption).
+Defined.
+
+Definition mult_bounds (x y : R) := make_Stream (fun k => x.[k] * y.[k]).
+
+Lemma mult_nth : forall x y k, (mult_bounds x y).[k] = x.[k] * y.[k].
+Proof.
+  setoid_rewrite make_Stream_spec; trivial.
+Qed.
+
+Lemma mult_nested : forall x y, nested (mult_bounds x y).
+Proof.
+  intros x y k1 k2 Hk.
+  repeat rewrite mult_nth.
+  split.
+  - destruct (QImult_spec2 x.[k2] y.[k2]) as [[r [s [Hr [Hs H]]]] _]; try apply bounds_nonempty.
+    rewrite H.
+    apply QImult_spec1; eapply bounds_nested_elem; eassumption.
+  - destruct (QImult_spec2 x.[k2] y.[k2]) as [_ [r [s [Hr [Hs H]]]]]; try apply bounds_nonempty.
+    rewrite H.
+    apply QImult_spec1; eapply bounds_nested_elem; eassumption.
+Qed.
+
+Lemma distance_le_width : forall r1 r2 (rs : Qinterval), r1 ∈ rs -> r2 ∈ rs -> (Qabs (r2 - r1) <= width rs)%Q.
+Proof.
+  intros r1 r2 rs [H1 H2] [H3 H4].
+  destruct (Qle_or_ge 0 (r2 - r1));
+    [rewrite Qabs_pos|unfold Qminus; rewrite Qabs_neg, Qopp_plus, Qopp_opp, Qplus_comm]; trivial;
+    apply Qplus_le_compat, Qopp_le_compat; trivial.
+Qed.
+
+Lemma QI_Qabs_ub : forall r (rs : Qinterval), r ∈ rs -> (Qabs r <= Qmax (Qabs (min rs)) (Qabs (max rs)))%Q.
+Proof.
+  intros r rs [H1 H2].
+  destruct (Qle_or_ge 0 r).
+  - rewrite Qabs_pos; trivial.
+    eapply Qle_trans; [eassumption|].
+    rewrite <- Qabs_pos at 1; [apply Q.le_max_r|].
+    q_order.
+  - rewrite Qabs_neg; trivial.
+    eapply Qle_trans; [apply Qopp_le_compat; eassumption|].
+    rewrite <- Qabs_neg at 1; [apply Q.le_max_l|].
+    q_order.
+Qed.
+
+Definition mult_delta (eps : Q) (x : R) : Q :=
+  (eps / 2) / Qmax (Qmax (Qabs (min x.[0])) (Qabs (max x.[0]))) 1.
+
+Lemma Qmax_1_pos : forall r, (Qmax r 1 > 0)%Q.
+Proof.
+  intro r.
+  apply (Qlt_le_trans _ 1); [reflexivity|].
+  apply Q.le_max_r.
+Qed.
+
+Lemma Qmax_1_nonzero : forall r, ~ (Qmax r 1 == 0)%Q.
+Proof.
+  intros r H.
+  pose (Qmax_1_pos r) as H2.
+  rewrite H in H2.
+  discriminate.
+Qed.
+
+Lemma mult_delta_pos : forall eps x, (eps > 0 -> mult_delta eps x > 0)%Q.
+Proof.
+  intros eps x H.
+  unfold mult_delta.
+  set (den := Qmax (Qmax (Qabs (min x.[0])) (Qabs (max x.[0]))) 1).
+  setoid_replace 0%Q with (0 / den)%Q by (field; apply Qmax_1_nonzero).
+  apply Qmult_lt_compat_r.
+  - apply Qinv_lt_0_compat, Qmax_1_pos.
+  - apply Qhalf_pos, H.
+Qed.
+
+Lemma mult_convergent'1 :
+  forall (x y : R) eps k3 r1 r2 s,
+    (width x.[k3] < mult_delta eps y -> r1 ∈ x.[k3] -> r2 ∈ x.[k3] -> s ∈ y.[k3] ->
+      s * (r2 - r1) < eps / 2)%Q.
+Proof.
+  intros x y eps k3 r1 r2 s Hw Hr1 Hr2 Hs.
+  set (den := Qmax (Qmax (Qabs (min y.[0])) (Qabs (max y.[0]))) 1).
+  apply
+    (Qle_lt_trans _ (Qabs (s * (r2 - r1)))),
+    (Qle_lt_trans _ (den * Qabs (r2 - r1))).
+  - apply Qle_Qabs.
+  - rewrite Qabs_Qmult.
+    apply Qmult_le_compat_r, Qabs_nonneg.
+    eapply Qle_trans; [|apply Q.le_max_l].
+    apply QI_Qabs_ub.
+    eapply bounds_nested_elem; [|eassumption].
+    apply Peano.le_0_n.
+  - setoid_replace (eps / 2)%Q with (den * mult_delta eps y)%Q.
+    + apply Qmult_lt_l; [apply Qmax_1_pos|].
+      eapply Qle_lt_trans; [|eassumption].
+      apply distance_le_width; trivial.
+    + unfold mult_delta, den.
+      field.
+      apply Qmax_1_nonzero.
+Qed.
+
+Lemma mult_convergent' :
+  forall (x y : R) eps k1 k2,
+    (width x.[k1] < mult_delta eps y -> width y.[k2] < mult_delta eps x ->
+      width (mult_bounds x y).[Nat.max k1 k2] < eps)%Q.
+Proof.
+  intros x y eps k1 k2 H1 H2.
+  set (k3 := Nat.max k1 k2).
+  apply (bounds_width_lt _ _ k3) in H1, H2; try apply Nat.le_max_l; try apply Nat.le_max_r.
+  destruct (QImult_spec2 x.[k3] y.[k3]) as [[r1 [s1 [H3 [H4 H5]]]] [r2 [s2 [H6 [H7 H8]]]]]; try apply bounds_nonempty.
+  unfold width.
+  rewrite mult_nth, H5, H8.
+  setoid_replace (r2 * s2 - r1 * s1)%Q with (s2 * (r2 - r1) + r1 * (s2 - s1))%Q by ring.
+  setoid_replace eps with (eps / 2 + eps / 2)%Q by field.
+  apply Qplus_lt_compat.
+  - apply (mult_convergent'1 x y _ k3); trivial.
+  - apply (mult_convergent'1 y x _ k3); trivial.
+Qed.
+
+Lemma mult_convergent : forall x y, convergent (mult_bounds x y).
+Proof.
+  intros x y eps Heps.
+  destruct (bounds_convergent x (mult_delta eps y)) as [k1 H1]; [apply mult_delta_pos, Heps|].
+  destruct (bounds_convergent y (mult_delta eps x)) as [k2 H2]; [apply mult_delta_pos, Heps|].
+  exists (Nat.max k1 k2).
+  apply mult_convergent'; trivial.
+Defined.
+
+Definition mult (x y : R) := make_R (mult_bounds x y) (mult_nested x y) (mult_convergent x y).
+Infix "*" := mult : R_scope.
+
+Lemma mult_in_nth : forall r s (x y : R) k, r ∈ x.[k] -> s ∈ y.[k] -> (r * s)%Q ∈ (x * y).[k].
+Proof.
+  intros.
+  setoid_rewrite mult_nth.
+  apply QImult_spec1; trivial.
+Qed.
+Global Hint Resolve mult_in_nth | 1 : fromQ.
+
+Add Morphism mult with signature (eqv ==> eqv ==> eqv) as mult_mor.
+Proof.
+  intros x1 x2 Hx y1 y2 Hy.
+  rewrite eqv_common_point in *.
+  intro k.
+  destruct (Hx k) as [r Hr], (Hy k) as [s Hs].
+  exists (r * s)%Q.
+  split; apply mult_in_nth; tauto.
+Qed.
+
+Theorem Q2R_mult : forall r s, Q2R (r * s) == Q2R r * Q2R s.
+Proof. fromQ. Qed.
+
+Theorem mult_comm: forall x y, x * y == y * x.
+Proof. fromQ. Qed.
+
+Theorem mult_assoc: forall x y z, (x * y) * z == x * (y * z).
+Proof. fromQ. Qed.
+
+Theorem mult_plus_dist_l : forall x y z, x * (y + z) == x * y + x * z.
+Proof. fromQ. Qed.
+
+Theorem mult_plus_dist_r : forall x y z, (x + y) * z == x * z + y * z.
+Proof. fromQ. Qed.
+
+Theorem mult_minus_dist_l : forall x y z, x * (y - z) == x * y - x * z.
+Proof. fromQ. Qed.
+
+Theorem mult_minus_dist_r : forall x y z, (x - y) * z == x * z - y * z.
+Proof. fromQ. Qed.
+
+Theorem mult_1_r : forall x, x * Q2R 1 == x.
+Proof. fromQ. Qed.
+
+Theorem mult_1_l : forall x, Q2R 1 * x == x.
+Proof. fromQ. Qed.
+
+Theorem mult_0_r : forall x, x * Q2R 0 == Q2R 0.
+Proof. fromQ. Qed.
+
+Theorem mult_0_l : forall x, Q2R 0 * x == Q2R 0.
+Proof. fromQ. Qed.
+
+Theorem mult_n1_r : forall x, x * Q2R (-1) == - x.
+Proof. fromQ. Qed.
+
+Theorem mult_n1_l : forall x, Q2R (-1) * x == - x.
+Proof. fromQ. Qed.
+
+Theorem mult_opp_r : forall x y, x * (- y) == - (x * y).
+Proof. fromQ. Qed.
+
+Theorem mult_opp_l : forall x y, (- x) * y == - (x * y).
+Proof. fromQ. Qed.

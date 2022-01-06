@@ -771,13 +771,18 @@ Proof.
   repeat split; cbn; q_order.
 Qed.
 
+Lemma Q2R_width : forall r k, (width (Q2R_bounds r).[k] == 0)%Q.
+  intros r k.
+  rewrite Q2R_nth.
+  apply Qplus_opp_r.
+Qed.
+
 Lemma Q2R_convergent : forall r, convergent (Q2R_bounds r).
 Proof.
   intros r eps Heps.
   exists 0%nat.
-  rewrite Q2R_nth.
-  setoid_rewrite Qplus_opp_r.
-  exact Heps.
+  eapply QOrder.eq_lt; try eassumption.
+  apply Q2R_width; trivial.
 Defined.
 
 Definition Q2R (r : Q) := make_R (Q2R_bounds r) (Q2R_nested r) (Q2R_convergent r).

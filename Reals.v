@@ -1038,6 +1038,7 @@ Proof.
 Qed.
 
 Lemma opp_convergent : forall x, convergent (opp_bounds x).
+Proof.
   intros x eps Heps.
   destruct (bounds_convergent x eps Heps) as [k H].
   exists k.
@@ -1135,7 +1136,7 @@ Proof.
   exact (lt_plus_r1' x y z k H).
 Defined.
 
-Theorem lt_plus_r2 : forall x y z, x < y -> x + z < y + z.
+Lemma lt_plus_r2 : forall x y z, x < y -> x + z < y + z.
 Proof.
   intros x y z H.
   apply (lt_plus_r1 _ _ (- z)).

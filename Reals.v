@@ -208,16 +208,26 @@ Definition lt (x y : R) :=
 Infix "<" := lt : R_scope.
 Notation "x > y" := (lt y x) (only parsing) : R_scope.
 
-Theorem lt_trans : forall x y z, x < y -> y < z -> x < z.
+Lemma lt_common_witness : forall a b c d, a < b -> c < d -> exists k, (a.[k] < b.[k] /\ c.[k] < d.[k])%QI.
 Proof.
-  intros x y z [k1 H1] [k2 H2].
+  intros a b c d [k1 H1] [k2 H2].
   set (k3 := Nat.max k1 k2).
   exists k3.
-  apply (Qle_lt_trans _ (max x.[k1])), (Qlt_trans _ (min y.[k1])), (Qle_lt_trans _ (max y.[k2])), (Qlt_le_trans _ (min z.[k2]));
-    trivial.
-  - apply bounds_nested, Nat.le_max_l.
-  - apply bounds_consistent.
-  - apply bounds_nested, Nat.le_max_r.
+  split;
+    [apply (Qle_lt_trans _ (max a.[k1])), (Qlt_le_trans _ (min b.[k1]))
+    |apply (Qle_lt_trans _ (max c.[k2])), (Qlt_le_trans _ (min d.[k2]))];
+  trivial;
+  apply bounds_nested;
+  (apply Nat.le_max_l || apply Nat.le_max_r).
+Defined.
+
+Theorem lt_trans : forall x y z, x < y -> y < z -> x < z.
+Proof.
+  intros x y z H1 H2.
+  destruct (lt_common_witness x y y z H1 H2) as [k [H3 H4]].
+  exists k.
+  apply (Qlt_trans _ (min y.[k])), (Qle_lt_trans _ (max y.[k])); trivial.
+  apply bounds_consistent.
 Defined.
 
 Theorem lt_irrefl : forall x, ~ x < x.
@@ -430,6 +440,20 @@ Proof.
   - apply (atm_trans _ y); apply eqv_atm; trivial.
   - apply (atm_trans _ y); apply eqv_atl; trivial.
 Qed.
+
+Theorem lt_eqv_trans : forall x y z, x < y -> y == z -> x < z.
+Proof.
+  intros x y z H1 H2.
+  apply eqv_atm in H2.
+  apply (lt_atm_trans _ y); trivial.
+Defined.
+
+Theorem eqv_lt_trans : forall x y z, x == y -> y < z -> x < z.
+Proof.
+  intros x y z H1 H2.
+  apply eqv_atm in H1.
+  apply (atm_lt_trans _ y); trivial.
+Defined.
 
 Definition equivalence_class_of (x : R) : set R :=
   fun y => y == x.
@@ -1086,6 +1110,16 @@ Proof. fromQ. Qed.
 Theorem opp_plus : forall x y, - (x + y) == (- x) + (- y).
 Proof. fromQ. Qed.
 
+Theorem opp_0 : - Q2R 0 == Q2R 0.
+Proof. fromQ. Qed.
+
+Theorem opp_shift : forall x y, x == - y -> y == -x.
+Proof.
+  intros x y H.
+  rewrite <- (opp_opp y), H.
+  reflexivity.
+Qed.
+
 Definition minus (x y : R) := x + (- y).
 Infix "-" := minus : R_scope.
 
@@ -1283,6 +1317,42 @@ Proof.
   intros.
   apply Morphisms_Prop.not_iff_morphism; apply apart_opp.
 Qed.
+
+Theorem opp_neg_pos : forall x, x > Q2R 0 <-> - x < Q2R 0.
+Proof.
+  intro x.
+  split; intro H.
+  - apply lt_opp in H.
+    apply (lt_eqv_trans _ (- Q2R 0)); trivial.
+    apply opp_0.
+  - apply lt_opp.
+    apply (lt_eqv_trans _ (Q2R 0)); trivial.
+    apply eqv_sym, opp_0.
+Defined.
+
+Theorem opp_pos_neg : forall x, x < Q2R 0 <-> - x > Q2R 0.
+Proof.
+  intro x.
+  split; intro H.
+  - apply lt_opp in H.
+    apply (eqv_lt_trans _ (- Q2R 0)); trivial.
+    apply eqv_sym, opp_0.
+  - apply lt_opp.
+    apply (eqv_lt_trans _ (Q2R 0)); trivial.
+    apply opp_0.
+Defined.
+
+Theorem gt_diff_pos : forall x y, x < y <-> y - x > Q2R 0.
+Proof.
+  intros x y.
+  split; intro H.
+  - apply (eqv_lt_trans _ (x + - x)).
+    + apply eqv_sym, plus_opp_0_r.
+    + apply lt_plus_r, H.
+  - apply (lt_plus_r _ _ (- x)).
+    apply (eqv_lt_trans _ (Q2R 0)); trivial.
+    apply plus_opp_0_r.
+Defined.
 
 Lemma Qle_or_ge : forall r s, (r <= s \/ r >= s)%Q.
 Proof.
@@ -1554,4 +1624,7 @@ Theorem mult_opp_r : forall x y, x * (- y) == - (x * y).
 Proof. fromQ. Qed.
 
 Theorem mult_opp_l : forall x y, (- x) * y == - (x * y).
+Proof. fromQ. Qed.
+
+Theorem mult_opp_opp : forall x y, (- x) * (- y) == x * y.
 Proof. fromQ. Qed.

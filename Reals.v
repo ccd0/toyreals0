@@ -1628,3 +1628,187 @@ Proof. fromQ. Qed.
 
 Theorem mult_opp_opp : forall x y, (- x) * (- y) == x * y.
 Proof. fromQ. Qed.
+
+Lemma Qmult_pos_pos : (forall x y, x > 0 -> y > 0 -> x * y > 0)%Q.
+Proof.
+  intros x y Hx Hy.
+  rewrite <- (Qmult_0_l y).
+  apply Qmult_lt_compat_r; trivial.
+Qed.
+
+Theorem mult_pos_pos : forall x y, x > Q2R 0 -> y > Q2R 0 -> x * y > Q2R 0.
+Proof.
+  intros x y Hx Hy.
+  destruct (lt_common_witness _ _ _ _ Hx Hy) as [k [H1 H2]].
+  exists k.
+  cbn in *.
+  rewrite Q2R_nth, mult_nth in *.
+  unfold QIlt, max in *.
+  destruct (QImult_spec2 x.[k] y.[k]) as [[r [s [[Hr _] [[Hs _] E]]]] _]; try apply bounds_nonempty.
+  rewrite E.
+  apply Qmult_pos_pos.
+  - apply (Qlt_le_trans _ (min x.[k])); trivial.
+  - apply (Qlt_le_trans _ (min y.[k])); trivial.
+Defined.
+
+Theorem mult_pos_neg : forall x y, x > Q2R 0 -> y < Q2R 0 -> x * y < Q2R 0.
+Proof.
+  intros x y Hx Hy.
+  apply opp_pos_neg.
+  apply (lt_eqv_trans _ (x * (- y))).
+  - apply mult_pos_pos; trivial.
+    apply opp_pos_neg; trivial.
+  - apply mult_opp_r.
+Defined.
+
+Theorem mult_neg_neg : forall x y, x < Q2R 0 -> y < Q2R 0 -> x * y > Q2R 0.
+Proof.
+  intros x y Hx Hy.
+  apply (lt_eqv_trans _ ((- x) * (- y))).
+  - apply mult_pos_pos; apply opp_pos_neg; trivial.
+  - apply mult_opp_opp.
+Defined.
+
+Lemma Qmult_pos_conv_r : (forall x y, y > 0 -> x * y > 0 -> x > 0)%Q.
+Proof.
+  intros x y Hy Hxy.
+  apply (Qmult_lt_r 0 x y); trivial.
+  rewrite Qmult_0_l; trivial.
+Qed.
+
+Theorem mult_pos_conv_r : forall x y, y > Q2R 0 -> x * y > Q2R 0 -> x > Q2R 0.
+Proof.
+  intros x y Hy Hxy.
+  destruct (lt_common_witness _ _ _ _ Hy Hxy) as [k [H1 H2]].
+  exists k.
+  cbn -[mult] in *.
+  rewrite Q2R_nth in *.
+  unfold QIlt, max in *.
+  apply (Qmult_pos_conv_r _ (min y.[k])); trivial.
+  apply (Qlt_le_trans _ _ _ H2).
+  assert ((min x.[k] * min y.[k])%Q ∈ (x * y).[k]) as H; [|destruct H; trivial].
+  auto with fromQ.
+Defined.
+
+Theorem mult_lt_r : forall x y z, z > Q2R 0 -> (x < y <-> x * z < y * z).
+Proof.
+  intros x y z Hz.
+  split; intro H; apply gt_diff_pos; apply gt_diff_pos in H.
+  - apply (mult_pos_pos _ z) in H; trivial.
+    apply (lt_eqv_trans _ _ _ H).
+    apply mult_minus_dist_r.
+  - apply (mult_pos_conv_r _ z); trivial.
+    apply (lt_eqv_trans _ _ _ H).
+    apply eqv_sym, mult_minus_dist_r.
+Defined.
+
+Lemma mult_minus_opp_r : forall x y z, (x - y) * (- z) == y * z - x * z.
+Proof. fromQ. Qed.
+
+Theorem mult_lt_neg_r : forall x y z, z < Q2R 0 -> (x < y <-> x * z > y * z).
+Proof.
+  intros x y z Hz.
+  apply opp_pos_neg in Hz.
+  split; intro H; apply gt_diff_pos; apply gt_diff_pos in H.
+  - apply (mult_pos_pos _ (- z)) in H; trivial.
+    apply (lt_eqv_trans _ _ _ H).
+    apply mult_minus_opp_r.
+  - apply (mult_pos_conv_r _ (- z)); trivial.
+    apply (lt_eqv_trans _ _ _ H).
+    apply eqv_sym, mult_minus_opp_r.
+Defined.
+
+Theorem mult_atm_r : forall x y z, z > Q2R 0 -> (x <= y <-> x * z <= y * z).
+Proof.
+  intros x y z Hz.
+  pose (mult_lt_r y x z Hz).
+  unfold atm.
+  tauto.
+Qed.
+
+Theorem mult_atm_neg_r : forall x y z, z < Q2R 0 -> (x <= y <-> x * z >= y * z).
+Proof.
+  intros x y z Hz.
+  pose (mult_lt_neg_r y x z Hz).
+  unfold atm.
+  tauto.
+Qed.
+
+Lemma or_comm: forall A B : Prop, A \/ B <-> B \/ A.
+Proof. tauto. Defined.
+
+Theorem mult_apart_r : forall x y z, z =/= Q2R 0 -> (x =/= y <-> x * z =/= y * z).
+Proof.
+  intros x y z [Hz|Hz].
+  - eapply iff_trans.
+    + apply Morphisms_Prop.or_iff_morphism; apply mult_lt_neg_r, Hz.
+    + apply or_comm.
+  - apply Morphisms_Prop.or_iff_morphism; apply mult_lt_r, Hz.
+Defined.
+
+Theorem mult_eqv_r : forall x y z, z =/= Q2R 0 -> (x == y <-> x * z == y * z).
+Proof.
+  intros x y z Hz.
+  pose (mult_apart_r x y z Hz).
+  unfold eqv.
+  tauto.
+Qed.
+
+Theorem mult_neg_pos : forall x y, x < Q2R 0 -> y > Q2R 0 -> x * y < Q2R 0.
+Proof.
+  intros x y Hx Hy.
+  eapply eqv_lt_trans.
+  - apply mult_comm.
+  - apply mult_pos_neg; trivial.
+Defined.
+
+Theorem mult_pos_conv_l : forall x y, x > Q2R 0 -> x * y > Q2R 0 -> y > Q2R 0.
+Proof.
+  intros x y Hx Hxy.
+  apply (mult_pos_conv_r _ x); trivial.
+  eapply lt_eqv_trans.
+  - eassumption.
+  - apply mult_comm.
+Defined.
+
+Theorem mult_lt_l : forall x y z, z > Q2R 0 -> (x < y <-> z * x < z * y).
+Proof.
+  intros x y z Hz.
+  eapply iff_trans.
+  - apply mult_lt_r, Hz.
+  - apply lt_mor_Proper; apply mult_comm.
+Defined.
+
+Theorem mult_lt_neg_l : forall x y z, z < Q2R 0 -> (x < y <-> z * x > z * y).
+Proof.
+  intros x y z Hz.
+  eapply iff_trans.
+  - apply mult_lt_neg_r, Hz.
+  - apply lt_mor_Proper; apply mult_comm.
+Defined.
+
+Theorem mult_atm_l : forall x y z, z > Q2R 0 -> (x <= y <-> z * x <= z * y).
+Proof.
+  setoid_rewrite mult_comm.
+  exact mult_atm_r.
+Qed.
+
+Theorem mult_atm_neg_l : forall x y z, z < Q2R 0 -> (x <= y <-> z * x >= z * y).
+Proof.
+  setoid_rewrite mult_comm.
+  exact mult_atm_neg_r.
+Qed.
+
+Theorem mult_apart_l : forall x y z, z =/= Q2R 0 -> (x =/= y <-> z * x =/= z * y).
+Proof.
+  intros x y z Hz.
+  eapply iff_trans.
+  - apply mult_apart_r, Hz.
+  - apply apart_mor_Proper; apply mult_comm.
+Defined.
+
+Theorem mult_eqv_l : forall x y z, z =/= Q2R 0 -> (x == y <-> z * x == z * y).
+Proof.
+  setoid_rewrite mult_comm.
+  exact mult_eqv_r.
+Qed.

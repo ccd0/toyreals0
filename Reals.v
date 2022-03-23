@@ -1914,3 +1914,83 @@ Proof.
   setoid_rewrite <- lem_dn at 3; trivial.
   apply mult_eqv_0_iff_markov, lem_markov, ExcludedMiddle.
 Qed.
+
+Theorem mult_pos_iff : forall x y, x * y > 0 <-> (x > 0 /\ y > 0) \/ (x < 0 /\ y < 0).
+Proof.
+  intros x y.
+  split; intro H.
+  - apply lt_apart in H as H2.
+    apply apart_sym, mult_apart_0_iff in H2.
+    destruct H2 as [[Hx|Hx] [Hy|Hy]].
+    + right. split; trivial.
+    + contradict H.
+      apply lt_not_gt, mult_neg_pos; trivial.
+    + contradict H.
+      apply lt_not_gt, mult_pos_neg; trivial.
+    + left. split; trivial.
+  - destruct H as [[Hx Hy]|[Hx Hy]].
+    + apply mult_pos_pos; trivial.
+    + apply mult_neg_neg; trivial.
+Defined.
+
+Theorem mult_neg_iff : forall x y, x * y < 0 <-> (x > 0 /\ y < 0) \/ (x < 0 /\ y > 0).
+Proof.
+  intros x y.
+  split; intro H.
+  - apply lt_apart in H as H2.
+    apply mult_apart_0_iff in H2.
+    destruct H2 as [[Hx|Hx] [Hy|Hy]].
+    + contradict H.
+      apply lt_not_gt, mult_neg_neg; trivial.
+    + right. split; trivial.
+    + left. split; trivial.
+    + contradict H.
+      apply lt_not_gt, mult_pos_pos; trivial.
+  - destruct H as [[Hx Hy]|[Hx Hy]].
+    + apply mult_pos_neg; trivial.
+    + apply mult_neg_pos; trivial.
+Defined.
+
+Theorem mult_atl_0 : forall x y, x >= 0 -> y >= 0 -> x * y >= 0.
+Proof.
+  intros x y Hx Hy HN.
+  apply mult_neg_iff in HN.
+  destruct HN as [[_ HN]|[HN _]].
+  - apply Hy, HN.
+  - apply Hx, HN.
+Qed.
+
+Theorem mult_pos_atl_0_r : forall x y, y >= 0 -> x * y > 0 -> x > 0.
+Proof.
+  intros x y Hy H.
+  apply mult_pos_iff in H.
+  destruct H as [H|H].
+  - destruct H; assumption.
+  - destruct H as [_ H].
+    contradict H.
+    exact Hy.
+Defined.
+
+Theorem mult_lt_atl_0_r : forall x y z, z >= 0 -> x * z < y * z -> x < y.
+Proof.
+  intros x y z Hz H.
+  apply gt_diff_pos, (mult_pos_atl_0_r _ z); trivial.
+  eapply lt_eqv_trans; [|apply eqv_sym, mult_minus_dist_r].
+  apply gt_diff_pos in H; trivial.
+Defined.
+
+Theorem mult_pos_atl_0_l : forall x y, x >= 0 -> x * y > 0 -> y > 0.
+Proof.
+  intros x y Hx H.
+  apply (mult_pos_atl_0_r _ x); trivial.
+  eapply lt_eqv_trans; [|apply mult_comm].
+  exact H.
+Defined.
+
+Theorem mult_lt_atl_0_l : forall x y z, z >= 0 -> z * x < z * y -> x < y.
+Proof.
+  intros x y z Hz H.
+  apply (mult_lt_atl_0_r _ _ z); trivial.
+  revert H.
+  apply lt_mor_Proper; apply mult_comm.
+Defined.

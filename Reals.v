@@ -523,9 +523,11 @@ Theorem eqv_compatible : Proper (eqv ==> eqv ==> iff) eqv.
 Qed.
 
 Lemma lem_dn :
-  ExcludedMiddle -> forall P : Prop, ~ ~ P -> P.
+  ExcludedMiddle -> forall P : Prop, ~ ~ P <-> P.
 Proof.
-  intros EM P H.
+  intros EM P.
+  split; [|tauto].
+  intro H.
   destruct (EM P) as [H2|H2].
   - exact H2.
   - contradict H.
@@ -745,6 +747,17 @@ Qed.
 
 Definition Markov :=
   forall P : nat -> Prop, (forall n, P n \/ ~ P n) -> ~ (forall n, ~ P n) -> exists n, P n.
+
+Lemma lem_markov : ExcludedMiddle -> Markov.
+Proof.
+  intros ExcludedMiddle P D H.
+  destruct (ExcludedMiddle (exists n, P n)) as [H2|H2]; trivial.
+  contradict H.
+  intros n Hn.
+  contradict H2.
+  exists n.
+  trivial.
+Qed.
 
 Lemma markov_sum_dn :
   Markov -> forall P : nat -> Prop, (forall n, {P n} + {~ P n}) -> ~ ~ (exists n, P n) -> exists n, P n.
@@ -1821,4 +1834,79 @@ Theorem mult_eqv_l : forall x y z, z =/= Q2R 0 -> (x == y <-> z * x == z * y).
 Proof.
   setoid_rewrite mult_comm.
   exact mult_eqv_r.
+Qed.
+
+Lemma not_elem_iff : forall r (rs : Qinterval), ~ r ∈ rs <-> (r < min rs \/ r > max rs)%Q.
+Proof.
+  intros r rs.
+  split.
+  - intro H.
+    destruct (Qlt_le_dec r (min rs)) as [C|C].
+    + left; trivial.
+    + right.
+      apply Qnot_le_lt.
+      contradict H.
+      split; trivial.
+  - intros [H|H];
+    contradict H;
+    apply Qle_not_lt;
+    destruct H; trivial.
+Qed.
+
+Lemma apart_not_elem : forall x r, x =/= Q2R r <-> exists k, ~ r ∈ x.[k].
+Proof.
+  intros x r.
+  split.
+  - intros [[k H]|[k H]];
+      exists k;
+      setoid_rewrite Q2R_nth in H;
+      apply not_elem_iff;
+      [right|left]; assumption.
+  - intros [k H].
+    apply not_elem_iff in H.
+    destruct H as [H|H];
+      [right|left]; exists k;
+      setoid_rewrite Q2R_nth; assumption.
+Defined.
+
+Theorem mult_apart_0_iff : forall x y, x * y =/= Q2R 0 <-> x =/= Q2R 0 /\ y =/= Q2R 0.
+Proof.
+  intros x y.
+  split; intro H.
+  - apply apart_not_elem in H.
+    destruct H as [k H].
+    split;
+      apply apart_not_elem;
+      exists k;
+      contradict H;
+      [erewrite <- Qmult_0_l|erewrite <- Qmult_0_r];
+      auto with fromQ.
+  - destruct H as [[Hx|Hx] [Hy|Hy]].
+    + right. apply mult_neg_neg; trivial.
+    + left. apply mult_neg_pos; trivial.
+    + left. apply mult_pos_neg; trivial.
+    + right. apply mult_pos_pos; trivial.
+Defined.
+
+Theorem mult_eqv_0_iff : forall x y, x * y == Q2R 0 <-> ~ (x =/= Q2R 0 /\ y =/= Q2R 0).
+  intros x y.
+  apply not_iff_compat, mult_apart_0_iff.
+Qed.
+
+Lemma demorgan_not_or : forall P Q : Prop, ~ (P \/ Q) <-> ~ P /\ ~ Q.
+Proof. tauto. Qed.
+
+Theorem mult_eqv_0_iff_markov : Markov -> forall x y, x * y == Q2R 0 <-> ~ ~ (x == Q2R 0 \/ y == Q2R 0).
+Proof.
+  intros Markov x y.
+  rewrite demorgan_not_or.
+  repeat rewrite markov_not_eqv_apart; trivial.
+  apply mult_eqv_0_iff.
+Qed.
+
+Theorem mult_eqv_0_iff_lem : ExcludedMiddle -> forall x y, x * y == Q2R 0 <-> x == Q2R 0 \/ y == Q2R 0.
+Proof.
+  intros ExcludedMiddle x y.
+  setoid_rewrite <- lem_dn at 3; trivial.
+  apply mult_eqv_0_iff_markov, lem_markov, ExcludedMiddle.
 Qed.

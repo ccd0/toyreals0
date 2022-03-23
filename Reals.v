@@ -752,9 +752,11 @@ Proof.
   firstorder.
 Qed.
 
-Theorem markov_not_atm_gt : Markov -> forall x y, ~ x <= y -> x > y.
+Theorem markov_not_atm_gt : Markov -> forall x y, ~ x <= y <-> x > y.
 Proof.
-  intros HM x y H.
+  intros HM x y.
+  split; [|unfold atm; tauto].
+  intro H.
   apply markov_sum_dn; trivial.
   intro n.
   apply QIlt_dec.
@@ -768,14 +770,22 @@ Proof.
 Defined.
 
 Theorem markov_or_lt_stable :
-  Markov -> forall w x y z, ~ ~ (w < x \/ y < z) -> w < x \/ y < z.
+  Markov -> forall w x y z, ~ ~ (w < x \/ y < z) <-> w < x \/ y < z.
 Proof.
-  intros HM w x y z H.
+  intros HM w x y z.
+  split; [|tauto].
+  intro H.
   apply ex_or_or_ex, markov_sum_dn; trivial.
   - intro n.
     apply or_dec; apply QIlt_dec.
   - apply (dn_imp_dn (w < x \/ y < z)); trivial.
     apply or_ex_ex_or.
+Qed.
+
+Theorem markov_not_eqv_apart : Markov -> forall x y, ~ x == y <-> x =/= y.
+Proof.
+  intros.
+  apply markov_or_lt_stable; trivial.
 Qed.
 
 Definition Q2R_bounds (r : Q) := make_Stream (fun k => [r, r]Q).

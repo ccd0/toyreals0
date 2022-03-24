@@ -1287,6 +1287,32 @@ Proof.
   apply (atm_trans _ (x + y)); [apply atm_plus_r|apply atm_plus_l]; trivial.
 Qed.
 
+Theorem plus_pos : forall x y, x > 0 -> y > 0 -> x + y > 0.
+Proof.
+  intros.
+  eapply eqv_lt_trans; [apply eqv_sym, plus_0_r|].
+  apply lt_plus; trivial.
+Defined.
+
+Theorem plus_neg : forall x y, x < 0 -> y < 0 -> x + y < 0.
+Proof.
+  intros.
+  eapply lt_eqv_trans; [|apply plus_0_r].
+  apply lt_plus; trivial.
+Defined.
+
+Theorem plus_atl_0 : forall x y, x >= 0 -> y >= 0 -> x + y >= 0.
+  intros.
+  rewrite <- (plus_0_r 0).
+  apply atm_plus; trivial.
+Qed.
+
+Theorem plus_atm_0 : forall x y, x <= 0 -> y <= 0 -> x + y <= 0.
+  intros.
+  rewrite <- (plus_0_r 0).
+  apply atm_plus; trivial.
+Qed.
+
 Lemma Qlt_opp : forall r s, (r < s <-> - r > - s)%Q.
 Proof.
   intros r s.

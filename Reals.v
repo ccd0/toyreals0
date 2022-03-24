@@ -893,6 +893,12 @@ Proof.
   apply Q2R_eqv.
 Qed.
 
+Theorem lt_0_1 : 0 < 1.
+Proof. apply Q2R_lt. reflexivity. Defined.
+
+Theorem apart_0_1 : 0 =/= 1.
+Proof. apply Q2R_apart. discriminate. Defined.
+
 Theorem bounds_correct : forall (x : R) k, Q2R (min x.[k]) <= x /\ x <= Q2R (max x.[k]).
 Proof.
   intros x k.

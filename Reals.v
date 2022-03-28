@@ -197,6 +197,13 @@ Proof.
   apply bounds_width_decr; trivial.
 Qed.
 
+Lemma bounds_width_nonneg : forall (x : R) k, (width x.[k] >= 0)%Q.
+Proof.
+  intros x k.
+  apply -> Qle_minus_iff.
+  apply bounds_nonempty.
+Qed.
+
 Definition QIlt (rs ss : Qinterval) := (max rs < min ss)%Q.
 
 Infix "<" := QIlt : QI_scope.
@@ -2026,3 +2033,286 @@ Proof.
   revert H.
   apply lt_mor_Proper; apply mult_comm.
 Defined.
+
+Definition find_zeroless (x : R) (p : x =/= 0) := find_lt_witness x 0 0 x p.
+
+Lemma find_zeroless_spec : forall x p, ~ 0%Q ∈ x.[find_zeroless x p].
+Proof.
+  intros x p.
+  apply not_elem_iff.
+  pose (find_lt_witness_spec x 0 0 x p) as H.
+  cbn in H.
+  rewrite Q2R_nth in H.
+  tauto.
+Qed.
+
+Definition QIinv rs := [/ max rs, / min rs]Q.
+Notation "/ x" := (QIinv x) : QI_scope.
+
+Lemma Qnot_lt_le_iff : forall a b, (~ a < b <-> b <= a)%Q.
+Proof.
+  intros.
+  split.
+  - apply Qnot_lt_le.
+  - apply Qle_not_lt.
+Qed.
+
+Lemma Qinv_le_contravar : forall a b, (a > 0 -> b > 0 -> a <= b <-> / b <= / a)%Q.
+Proof.
+  intros.
+  rewrite <- Qnot_lt_le_iff, <- Qnot_lt_le_iff, Qinv_lt_contravar; trivial.
+  tauto.
+Qed.
+
+Lemma Qle_opp : forall a b, (a <= b <-> - b <= - a)%Q.
+Proof.
+  intros.
+  rewrite <- Qnot_lt_le_iff, <- Qnot_lt_le_iff, Qlt_opp.
+  tauto.
+Qed.
+
+Lemma Qinv_opp : forall a, (~ a == 0 -> / - a == - / a)%Q.
+Proof. intros. field. assumption. Qed.
+
+Lemma Qinv_le_contravar_neg : forall a b, (a < 0 -> b < 0 -> a <= b <-> / b <= / a)%Q.
+Proof.
+  intros a b Ha Hb.
+  setoid_rewrite Qle_opp.
+  setoid_rewrite <- Qinv_opp; try (apply Qlt_not_eq; assumption).
+  apply Qinv_le_contravar;
+    apply (Qlt_opp _ 0); assumption.
+Qed.
+
+Lemma QIinv_spec : forall r (rs : Qinterval), ~ 0%Q ∈ rs -> r ∈ rs -> (/ r)%Q ∈ / rs.
+Proof.
+  intros r rs H0 [Hr1 Hr2].
+  apply not_elem_iff in H0.
+  destruct H0 as [H0|H0].
+  - assert (r > 0)%Q as H1 by (eapply Qlt_le_trans; eassumption).
+    assert (max rs > 0)%Q as H2 by (eapply Qlt_le_trans; eassumption).
+    split; apply -> Qinv_le_contravar; trivial.
+  - assert (r < 0)%Q as H1 by (eapply Qle_lt_trans; eassumption).
+    assert (min rs < 0)%Q as H2 by (eapply Qle_lt_trans; eassumption).
+    split; apply -> Qinv_le_contravar_neg; trivial.
+Qed.
+
+Lemma find_zeroless_ge : forall x p k, (k >= find_zeroless x p)%nat -> ~ 0%Q ∈ x.[k].
+Proof.
+  intros x p k H HN.
+  eapply bounds_nested_elem in HN; try eassumption.
+  apply find_zeroless_spec in HN.
+  exact HN.
+Qed.
+
+Lemma find_zeroless_max : forall x p k, ~ 0%Q ∈ x.[Nat.max k (find_zeroless x p)].
+Proof.
+  intros x p k.
+  apply (find_zeroless_ge x p), Nat.le_max_r.
+Qed.
+
+Definition inv_bounds (x : R) (p : x =/= 0) := make_Stream (fun k => / x.[Nat.max k (find_zeroless x p)]).
+
+Lemma inv_nth : forall x p k, (inv_bounds x p).[k] = / x.[Nat.max k (find_zeroless x p)].
+Proof.
+  setoid_rewrite make_Stream_spec; trivial.
+Qed.
+
+Lemma inv_nested : forall x p, nested (inv_bounds x p).
+Proof.
+  intros x p k1 k2 Hk.
+  setoid_rewrite inv_nth.
+  set (k1' := Nat.max k1 (find_zeroless x p)).
+  set (k2' := Nat.max k2 (find_zeroless x p)).
+  assert (k2' >= k1')%nat as Hk' by (apply Nat.max_le_compat_r; assumption).
+  assert (~ 0%Q ∈ x.[k1']) as HZ by apply find_zeroless_max.
+  split;
+    (apply QIinv_spec; [apply find_zeroless_max|]);
+    apply bounds_nested, Hk'.
+Qed.
+
+Lemma Qmult_neg_neg : (forall a b, a < 0 -> b < 0 -> a * b > 0)%Q.
+Proof.
+  intros a b Ha Hb.
+  setoid_replace (a * b)%Q with ((- a) * (- b))%Q by ring.
+  apply Qmult_pos_pos; apply (Qlt_opp _ 0); trivial.
+Qed.
+
+Lemma zeroless_min_sq_pos : forall a b, (a <= b -> ~ 0%Q ∈ [a, b]Q -> Qmin (a * a) (b * b) > 0)%Q.
+Proof.
+  intros a b Hab H0.
+  apply not_elem_iff in H0.
+  destruct H0 as [H0|H0].
+  - assert (b > 0)%Q as Hb by (eapply Qlt_le_trans; eassumption).
+    apply Q.min_glb_lt; apply Qmult_pos_pos; assumption.
+  - assert (a < 0)%Q as Ha by (eapply Qle_lt_trans; eassumption).
+    apply Q.min_glb_lt; apply Qmult_neg_neg; assumption.
+Qed.
+
+Lemma zeroless_sq_lb :
+  forall a b r s, r ∈ [a, b]Q -> s ∈ [a, b]Q -> ~ 0%Q ∈ [a, b]Q -> (r * s >= Qmin (a * a) (b * b))%Q.
+Proof.
+  intros a b r s [Hr1 Hr2] [Hs1 Hs2] H0.
+  apply not_elem_iff in H0.
+  destruct H0 as [H0|H0];
+    [|apply Qlt_le_weak in H0];
+    eapply Qle_trans, Qle_trans.
+  - apply Q.le_min_l.
+  - apply (Qmult_le_l _ s); eassumption.
+  - apply Qmult_le_r; trivial.
+    eapply Qlt_le_trans; eassumption.
+  - apply Q.le_min_r.
+  - apply (Qmult_le_neg_r s); eassumption.
+  - rewrite Qmult_comm.
+    apply Qmult_le_neg_r; trivial.
+    eapply Qle_trans; eassumption.
+Qed.
+
+Lemma inv_convergent' :
+  forall x p eps k,
+    let n := find_zeroless x p in
+    let c := Qmin (min x.[n] * min x.[n]) (max x.[n] * max x.[n]) in
+      (width x.[k] < eps * c -> width (inv_bounds x p).[Nat.max k n] < eps)%Q.
+Proof.
+  intros x p eps k n c Hk.
+  set (k' := Nat.max k n).
+  set (a := min x.[k']).
+  set (b := max x.[k']).
+  assert (~ 0%Q ∈ x.[n]) as Hn by apply find_zeroless_spec.
+  assert (c > 0)%Q as Hc by (apply zeroless_min_sq_pos; [apply bounds_consistent|apply Hn]).
+  assert (k' >= n)%nat as Hk' by apply Nat.le_max_r.
+  assert (a * b >= c)%Q as Hab by (apply zeroless_sq_lb; trivial; apply bounds_nested, Hk').
+  assert (a * b > 0)%Q as Hab2 by (apply (Qlt_le_trans _ c); trivial).
+  assert (~ a == 0 /\ ~ b == 0)%Q as Hab0
+    by (split; contradict Hn; rewrite <- Hn; apply bounds_nested, Hk').
+  rewrite inv_nth.
+  rewrite Nat.max_l by trivial.
+  apply
+    (@QOrder.eq_lt _ (width x.[k'] / (a * b))%Q),
+    (Qle_lt_trans _ (width x.[k'] / c)),
+    (Qle_lt_trans _ (width x.[k] / c)).
+  - unfold QIinv, width.
+    cbn.
+    subst a b.
+    field; tauto.
+  - setoid_rewrite Qmult_comm.
+    apply Qmult_le_compat_r; [|apply bounds_width_nonneg].
+    apply -> Qinv_le_contravar; trivial.
+  - apply Qmult_le_compat_r.
+    + apply bounds_width_decr, Nat.le_max_l.
+    + apply Qlt_le_weak, Qinv_lt_0_compat, Hc.
+  - apply Qlt_shift_div_r; trivial.
+Qed.
+
+Lemma inv_convergent : forall x p, convergent (inv_bounds x p).
+Proof.
+  intros x p eps Heps.
+  set (n := find_zeroless x p).
+  set (c := Qmin (min x.[n] * min x.[n]) (max x.[n] * max x.[n])).
+  assert (~ 0%Q ∈ x.[n]) as Hn by apply find_zeroless_spec.
+  assert (c > 0)%Q as Hc by (apply zeroless_min_sq_pos; [apply bounds_consistent|apply Hn]).
+  assert (eps * c > 0)%Q as Hdelta by (apply Qmult_pos_pos; trivial).
+  destruct (bounds_convergent x (eps * c)%Q Hdelta) as [k Hk].
+  set (k' := Nat.max k n).
+  exists k'.
+  apply inv_convergent', Hk.
+Defined.
+
+Definition inv (x : {y : R | y =/= 0}) :=
+  let (y, p) := x in make_R (inv_bounds y p) (inv_nested y p) (inv_convergent y p).
+
+Notation "/ x" := (inv x) : R_scope.
+Notation "x † p" := (exist _ x p) (at level 2, format "x  † p") : R_scope.
+
+Lemma eqv_fromQ_r :
+  forall (x y : R) n, (forall k, (k >= n)%nat -> exists r s, ((r ∈ x.[k] /\ s ∈ y.[k]) /\ r == s)%Q) -> x == y.
+Proof.
+  intros x y n H [[k Hk]|[k Hk]];
+    set (k' := Nat.max k n);
+    assert (k' >= n)%nat as Hk' by apply Nat.le_max_r;
+    destruct (H k' Hk') as [r [s [[Hr Hs] HE]]];
+    apply (bounds_nested_elem _ k) in Hr, Hs; try apply Nat.le_max_l;
+    destruct Hr, Hs;
+    contradict HE;
+    [|apply Qnot_eq_sym];
+    apply Qlt_not_eq;
+    eapply Qle_lt_trans, Qlt_le_trans; eassumption.
+Qed.
+
+Lemma inv_in_nth :
+  forall r (x : R) (p : x =/= 0) k, r ∈ x.[Nat.max k (find_zeroless x p)] -> (/ r)%Q ∈ (/ x †p).[k].
+Proof.
+  intros r x p k Hr.
+  setoid_rewrite inv_nth.
+  apply QIinv_spec; trivial.
+  apply find_zeroless_max.
+Qed.
+
+Global Hint Resolve inv_in_nth | 1 : fromQ.
+
+Theorem inv_compatible : forall x y, x == y -> forall p q, / x †p == / y †q.
+Proof.
+  intros x y H p q.
+  set (n := Nat.max (find_zeroless x p) (find_zeroless y q)).
+  apply (eqv_fromQ_r _ _ n).
+  intros k Hk.
+  rewrite eqv_common_point in H.
+  destruct (H k) as [r [Hr Hs]].
+  exists (/ r)%Q, (/ r)%Q.
+  split; [|reflexivity].
+  split;
+    apply inv_in_nth;
+    rewrite Nat.max_l; trivial;
+    revert Hk; [apply Nat.max_lub_l|apply Nat.max_lub_r].
+Qed.
+
+Lemma find_zeroless_min : forall x p k, (k >= find_zeroless x p)%nat -> ~ (min x.[k] == 0)%Q.
+Proof.
+  intros x p k H.
+  apply find_zeroless_ge in H.
+  contradict H.
+  rewrite <- H.
+  apply bounds_min_elem.
+Qed.
+
+Lemma add_constraint : (forall k m n P, (k >= m -> P) -> (k >= Nat.max m n -> P))%nat.
+Proof.
+  intros k m n P H Hk.
+  apply H.
+  revert Hk.
+  apply Nat.max_lub_l.
+Qed.
+
+Ltac fromQ_r :=
+  repeat (let a := fresh "a" in let b := fresh "b" in intros a b; try (pose (find_zeroless_min _ a)); revert b);
+  eapply eqv_fromQ_r;
+  let k := fresh "k" in let Hk := fresh "Hk" in (
+    intros k Hk;
+    eexists; eexists;
+    split; [split; auto with fromQ|
+      repeat (rewrite (Nat.max_l k) by (eapply Nat.max_lub_r; apply Hk); revert Hk; apply add_constraint; intro Hk);
+      try field;
+      repeat (split; [eapply Nat.max_lub_r in Hk; eauto|]; revert Hk; apply add_constraint; intro Hk);
+      eauto
+    ]
+  ).
+
+Theorem inv_involutive : forall x p q, / (/ x †p) †q == x.
+Proof. fromQ_r. Qed.
+
+Theorem Q2R_inv : forall r p, (~ r == 0)%Q -> Q2R(/ r) == / (Q2R r) †p.
+Proof. fromQ; trivial. Qed.
+
+Theorem inv_1 : forall p, / 1 †p == 1.
+Proof. fromQ. Qed.
+
+Theorem inv_opp : forall x p q, / (- x) †q == - / x †p.
+Proof. fromQ_r. Qed.
+
+Theorem mult_inv_r : forall x p, x * / x †p == 1.
+Proof. fromQ_r. Qed.
+
+Theorem mult_inv_l : forall x p, / x †p * x == 1.
+Proof. fromQ_r. Qed.
+
+Theorem inv_mult : forall x y p q r, / (x * y) †r == (/x †p) * (/y †q).
+Proof. fromQ_r. Qed.

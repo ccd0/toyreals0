@@ -314,6 +314,11 @@ Proof.
   intros x y [H|H]; [right|left]; exact H.
 Defined.
 
+Theorem apart_sym_iff : forall x y, x =/= y <-> y =/= x.
+Proof.
+  intros. split; apply apart_sym; assumption.
+Defined.
+
 Theorem eqv_sym : forall x y, x == y -> y == x.
 Proof.
   intros x y H HN.
@@ -1406,6 +1411,18 @@ Proof.
   - apply lt_opp.
     apply (eqv_lt_trans _ 0); trivial.
     apply opp_0.
+Defined.
+
+Lemma or_iff_compat : forall A B C D : Prop, (A <-> C) -> (B <-> D) -> (A \/ B) <-> (C \/ D).
+Proof. tauto. Defined.
+
+Theorem opp_apart_0 : forall x, x =/= 0 <-> - x =/= 0.
+Proof.
+  intro x.
+  eapply iff_trans; [|apply apart_sym_iff].
+  apply or_iff_compat.
+  - apply opp_pos_neg.
+  - apply opp_neg_pos.
 Defined.
 
 Theorem gt_diff_pos : forall x y, x < y <-> y - x > 0.

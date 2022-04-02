@@ -2333,3 +2333,98 @@ Proof. fromQ_r. Qed.
 
 Theorem inv_mult : forall x y p q r, / (x * y) †r == (/x †p) * (/y †q).
 Proof. fromQ_r. Qed.
+
+Theorem inv_pos : forall x p, x > 0 <-> / x †p > 0.
+Proof.
+  intros x p.
+  assert (x * / x †p > 0) as H2.
+  - eapply lt_eqv_trans.
+    + exact lt_0_1.
+    + apply eqv_sym, mult_inv_r.
+  - split; intro H.
+    + eapply mult_pos_conv_l; eassumption.
+    + eapply mult_pos_conv_r; eassumption.
+Defined.
+
+Lemma iff_sym : forall A B : Prop, (A <-> B) -> (B <-> A).
+Proof. tauto. Defined.
+
+Theorem inv_neg : forall x p, x < 0 <-> / x †p < 0.
+Proof.
+  intros x p.
+  assert (-x =/= 0) as q by apply (opp_apart_0 x), p.
+  eapply iff_trans, iff_trans, iff_trans.
+  - apply opp_pos_neg.
+  - apply (inv_pos (- x) q).
+  - apply lt_mor_Proper; [reflexivity|].
+    apply (inv_opp x p q).
+  - apply iff_sym, opp_pos_neg.
+Defined.
+
+Theorem inv_apart_0 : forall x (p : x =/= 0), / x †p =/= 0.
+Proof.
+  intros x [p|p]; [left; apply inv_neg|right; apply inv_pos]; assumption.
+Defined.
+
+Lemma inv_lt_mult_pos : forall x y p q, x * y > 0 -> x < y <-> / y †q < / x †p.
+Proof.
+  intros x y p q H.
+  apply (iff_trans _ ((x * y) * (/ y †q) < (x * y) * (/ x †p))).
+  - apply lt_mor_Proper;
+      [|rewrite (mult_comm x y)];
+      rewrite mult_assoc, mult_inv_r, mult_1_r; reflexivity.
+  - apply iff_sym, mult_lt_l, H.
+Defined.
+
+Theorem inv_lt_pos : forall x y p q, x > 0 -> y > 0 -> x < y <-> / y †q < / x †p.
+Proof. intros. apply inv_lt_mult_pos, mult_pos_pos; assumption. Defined.
+
+Theorem inv_lt_neg : forall x y p q, x < 0 -> y < 0 -> x < y <-> / y †q < / x †p.
+Proof. intros. apply inv_lt_mult_pos, mult_neg_neg; assumption. Defined.
+
+Theorem inv_atm_pos : forall x y p q, x > 0 -> y > 0 -> x <= y <-> / y †q <= / x †p.
+Proof. intros. apply not_iff_compat, inv_lt_pos; assumption. Qed.
+
+Theorem inv_atm_neg : forall x y p q, x < 0 -> y < 0 -> x <= y <-> / y †q <= / x †p.
+Proof. intros. apply not_iff_compat, inv_lt_neg; assumption. Qed.
+
+Theorem inv_apart : forall x y p q, x =/= y <-> / x †p =/= / y †q.
+Proof.
+  intros x y p q.
+  apply (iff_trans _ ((x * y) * (/ y †q) =/= (x * y) * (/ x †p))), (iff_trans _ (/ y †q =/= / x †p)).
+  - apply apart_mor_Proper;
+      [|rewrite (mult_comm x y)];
+      rewrite mult_assoc, mult_inv_r, mult_1_r; reflexivity.
+  - apply iff_sym, mult_apart_l, mult_apart_0_iff.
+    split; assumption.
+  - apply apart_sym_iff.
+Defined.
+
+Theorem inv_eqv : forall x y p q, x == y <-> / x †p == / y †q.
+Proof. intros. apply not_iff_compat, inv_apart. Qed.
+
+Theorem inv_lt_iff :
+  forall x y p q, / x †p < / y †q <-> (0 < y /\ y < x) \/ (y < x /\ x < 0) \/ (x < 0 /\ 0 < y).
+Proof.
+  intros x y p q.
+  split; intro H.
+  - destruct p as [p|p], q as [q|q].
+    + right. left.
+      split; trivial.
+      eapply inv_lt_neg; eassumption.
+    + right. right.
+      split; assumption.
+    + contradict H.
+      apply lt_not_gt, (lt_trans _ 0);
+        [apply inv_neg|apply inv_pos]; assumption.
+    + left.
+      split; trivial.
+      eapply inv_lt_pos; eassumption.
+  - destruct H as [H|[H|H]]; destruct H as [H1 H2].
+    + apply inv_lt_pos; trivial.
+      eapply lt_trans; eassumption.
+    + apply inv_lt_neg; trivial.
+      eapply lt_trans; eassumption.
+    + apply (lt_trans _ 0);
+        [apply inv_neg|apply inv_pos]; assumption.
+Defined.

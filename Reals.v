@@ -2266,9 +2266,37 @@ Qed.
 
 Global Hint Resolve inv_in_nth | 1 : fromQ.
 
-Theorem inv_compatible : forall x y, x == y -> forall p q, / x †p == / y †q.
+Definition eqv_subset {P : R -> Prop} (x y : {z : R | P z}) :=
+  (let (x', _) := x in x') == (let (y', _) := y in y').
+
+Lemma eqv_subset_refl : forall P (x : {y : R | P y}), eqv_subset x x.
 Proof.
-  intros x y H p q.
+  intros P [x p].
+  apply eqv_refl.
+Qed.
+
+Lemma eqv_subset_sym : forall P (x y : {z : R | P z}), eqv_subset x y -> eqv_subset y x.
+Proof.
+  intros P [x p] [y q].
+  apply eqv_sym.
+Qed.
+
+Lemma eqv_subset_trans : forall P (x y z : {a : R | P a}), eqv_subset x y -> eqv_subset y z -> eqv_subset x z.
+Proof.
+  intros P [x p] [y q] [z r].
+  apply eqv_trans.
+Qed.
+
+Add Parametric Relation P : ({x : R | P x}) (@eqv_subset P)
+  reflexivity proved by (eqv_subset_refl P)
+  symmetry proved by (eqv_subset_sym P)
+  transitivity proved by (eqv_subset_trans P)
+  as eqv_subset_rel.
+
+Add Morphism inv with signature ((@eqv_subset (fun x => x =/= 0)) ==> eqv) as inv_mor.
+Proof.
+  intros [x p] [y q] H.
+  unfold eqv_subset in H.
   set (n := Nat.max (find_zeroless x p) (find_zeroless y q)).
   apply (eqv_fromQ_r _ _ n).
   intros k Hk.
@@ -2428,3 +2456,51 @@ Proof.
     + apply (lt_trans _ 0);
         [apply inv_neg|apply inv_pos]; assumption.
 Defined.
+
+Definition div (x : R) (y : {z : R | z =/= 0}) := x * (/ y).
+Infix "/" := div : R_scope.
+
+Add Morphism div with signature (eqv ==> (@eqv_subset (fun x => x =/= 0)) ==> eqv) as div_mor.
+Proof.
+  intros x1 x2 Hx [y1 p1] [y2 p2] Hy.
+  apply mult_mor_Proper; trivial.
+  apply inv_mor_Proper; trivial.
+Qed.
+
+Lemma div_in_nth :
+  forall r s (x y : R) (p : y =/= 0) k,
+    r ∈ x.[k] -> s ∈ y.[Nat.max k (find_zeroless y p)] -> (r / s)%Q ∈ (x / y †p).[k].
+Proof.
+  intros r s x y p k Hr Hs.
+  apply mult_in_nth; trivial.
+  apply inv_in_nth; trivial.
+Qed.
+Global Hint Resolve div_in_nth | 1 : fromQ.
+
+Theorem mult_div : forall x y p, (x * y) / y †p == x.
+Proof. fromQ_r. Qed.
+
+Theorem div_mult : forall x y p, (x / y †p) * y == x.
+Proof. fromQ_r. Qed.
+
+Theorem div_shift : forall x y z p, x / y †p == z <-> x == z * y.
+Proof.
+  intros x y z p.
+  split; intro H.
+  - rewrite <- H.
+    apply eqv_sym, div_mult.
+  - rewrite H.
+    apply mult_div.
+Qed.
+
+Theorem div_lt : forall x y z p, z > 0 -> (x < y <-> x / z †p < y / z †p).
+Proof. intros. apply mult_lt_r, inv_pos; trivial. Qed.
+
+Theorem div_atm : forall x y z p, z > 0 -> (x <= y <-> x / z †p <= y / z †p).
+Proof. intros. apply mult_atm_r, inv_pos; trivial. Qed.
+
+Theorem div_lt_neg : forall x y z p, z < 0 -> (x < y <-> x / z †p > y / z †p).
+Proof. intros. apply mult_lt_neg_r, inv_neg; trivial. Qed.
+
+Theorem div_atm_neg : forall x y z p, z < 0 -> (x <= y <-> x / z †p >= y / z †p).
+Proof. intros. apply mult_atm_neg_r, inv_neg; trivial. Qed.

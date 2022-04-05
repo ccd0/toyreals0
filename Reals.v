@@ -2513,12 +2513,11 @@ Definition N2Q x := Z2Q (N2Z x).
 Definition N2R x := Q2R (Z2Q (N2Z x)).
 Definition Z2R x := Q2R (Z2Q x).
 
-Definition N_above x := Z2N (Z.max (Qfloor (max x.[0]) + 1) 0).
-
-Theorem N_above_spec : forall x, N2R (N_above x) > x.
+Theorem archimedes : forall x, exists n, N2R n > x.
 Proof.
   intro x.
-  unfold N2R, N_above.
+  exists (Z2N (Z.max (Qfloor (max x.[0]) + 1) 0)).
+  unfold N2R.
   apply (atm_lt_trans _ (Q2R (max x.[0]))), (lt_atm_trans _ (Z2R (Qfloor (max x.[0]) + 1))); [| |rewrite Z2N.id].
   - apply bounds_correct.
   - apply Q2R_lt, Qlt_floor.
@@ -2528,26 +2527,18 @@ Proof.
   - apply Z.le_max_r.
 Defined.
 
-Definition N_inv_below (x' : {y : R | y > 0}) := let (x, p) := x' in N_above (/ x †(or_intror p)).
-
-Theorem N_inv_below_apart_0 : forall x, N2R (N_inv_below x) =/= 0.
+Theorem archimedes_inv : forall x, x > 0 -> exists n p, / (N2R n) †p < x.
 Proof.
-  intros [x p].
-  right.
-  apply (lt_trans _ (/x †(or_intror p))).
-  - apply inv_pos, p.
-  - apply N_above_spec.
-Defined.
-
-Theorem N_inv_below_spec : forall x p, / (N2R (N_inv_below x †p)) †(N_inv_below_apart_0 x †p) < x.
-Proof.
-  intros x p.
-  set (q := or_intror p : x =/= 0).
-  assert (/ x †q > 0) as H by apply inv_pos, p.
-  assert (/ x †q =/= 0) as r by (right; trivial).
-  assert (/ x †q < N2R (N_inv_below x †p)) as H2 by apply N_above_spec.
-  apply (lt_eqv_trans _ (/ (/ x †q) †r)).
+  intros x H.
+  assert (x =/= 0) as p by (right; trivial).
+  assert (/ x †p > 0) as H2 by apply inv_pos, H.
+  assert (/ x †p =/= 0) as q by (right; trivial).
+  destruct (archimedes (/ x †p)) as [n Hn].
+  exists n.
+  assert (N2R n > 0) as Hn2 by (eapply lt_trans; eassumption).
+  assert (N2R n =/= 0) as r by (right; trivial).
+  exists r.
+  apply (lt_eqv_trans _ (/ (/ x †p) †q)).
   - apply inv_lt_pos; trivial.
-    eapply lt_trans; eassumption.
   - apply inv_involutive.
 Defined.

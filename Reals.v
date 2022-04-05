@@ -2,6 +2,7 @@ Require Import Coq.QArith.QArith.
 Require Import Coq.QArith.QOrderedType.
 Require Import Coq.QArith.Qminmax.
 Require Import Coq.QArith.Qabs.
+Require Import Coq.QArith.Qround.
 Require Import Coq.Lists.Streams.
 Require Import Coq.Logic.ChoiceFacts.
 Require Import Coq.Logic.ConstructiveEpsilon.
@@ -2504,3 +2505,49 @@ Proof. intros. apply mult_lt_neg_r, inv_neg; trivial. Qed.
 
 Theorem div_atm_neg : forall x y z p, z < 0 -> (x <= y <-> x / z †p >= y / z †p).
 Proof. intros. apply mult_atm_neg_r, inv_neg; trivial. Qed.
+
+Notation N2Z := Z.of_N.
+Notation Z2Q := inject_Z.
+Notation Z2N := Z.to_N.
+Definition N2Q x := Z2Q (N2Z x).
+Definition N2R x := Q2R (Z2Q (N2Z x)).
+Definition Z2R x := Q2R (Z2Q x).
+
+Definition N_above x := Z2N (Z.max (Qfloor (max x.[0]) + 1) 0).
+
+Theorem N_above_spec : forall x, N2R (N_above x) > x.
+Proof.
+  intro x.
+  unfold N2R, N_above.
+  apply (atm_lt_trans _ (Q2R (max x.[0]))), (lt_atm_trans _ (Z2R (Qfloor (max x.[0]) + 1))); [| |rewrite Z2N.id].
+  - apply bounds_correct.
+  - apply Q2R_lt, Qlt_floor.
+  - apply Q2R_atm.
+    rewrite <- Zle_Qle.
+    apply Z.le_max_l.
+  - apply Z.le_max_r.
+Defined.
+
+Definition N_inv_below (x' : {y : R | y > 0}) := let (x, p) := x' in N_above (/ x †(or_intror p)).
+
+Theorem N_inv_below_apart_0 : forall x, N2R (N_inv_below x) =/= 0.
+Proof.
+  intros [x p].
+  right.
+  apply (lt_trans _ (/x †(or_intror p))).
+  - apply inv_pos, p.
+  - apply N_above_spec.
+Defined.
+
+Theorem N_inv_below_spec : forall x p, / (N2R (N_inv_below x †p)) †(N_inv_below_apart_0 x †p) < x.
+Proof.
+  intros x p.
+  set (q := or_intror p : x =/= 0).
+  assert (/ x †q > 0) as H by apply inv_pos, p.
+  assert (/ x †q =/= 0) as r by (right; trivial).
+  assert (/ x †q < N2R (N_inv_below x †p)) as H2 by apply N_above_spec.
+  apply (lt_eqv_trans _ (/ (/ x †q) †r)).
+  - apply inv_lt_pos; trivial.
+    eapply lt_trans; eassumption.
+  - apply inv_involutive.
+Defined.

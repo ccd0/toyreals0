@@ -1185,6 +1185,9 @@ Proof.
 Qed.
 Global Hint Resolve minus_in_nth | 1 : fromQ.
 
+Theorem Q2R_minus : forall r s, Q2R (r - s) == Q2R r - Q2R s.
+Proof. fromQ. Qed.
+
 Theorem plus_minus : forall x y, (x + y) - y == x.
 Proof. fromQ. Qed.
 
@@ -2477,6 +2480,9 @@ Proof.
   apply inv_in_nth; trivial.
 Qed.
 Global Hint Resolve div_in_nth | 1 : fromQ.
+
+Theorem Q2R_div : forall r s p, ~ (s == 0)%Q -> Q2R (r / s) == (Q2R r) / (Q2R s) † p.
+Proof. fromQ; trivial. Qed.
 
 Theorem mult_div : forall x y p, (x * y) / y †p == x.
 Proof. fromQ_r. Qed.

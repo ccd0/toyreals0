@@ -216,6 +216,16 @@ Definition lt (x y : R) :=
 Infix "<" := lt : R_scope.
 Notation "x > y" := (lt y x) (only parsing) : R_scope.
 
+Lemma lt_from_bounds : forall (x y : R) k1 k2, (max x.[k1] < min y.[k2])%Q -> x < y.
+Proof.
+  intros x y k1 k2 H.
+  set (k := Nat.max k1 k2).
+  exists k.
+  eapply Qle_lt_trans, Qlt_le_trans; [|exact H|]; apply bounds_nested.
+  - apply Nat.le_max_l.
+  - apply Nat.le_max_r.
+Defined.
+
 Lemma lt_common_witness : forall a b c d, a < b -> c < d -> exists k, (a.[k] < b.[k] /\ c.[k] < d.[k])%QI.
 Proof.
   intros a b c d [k1 H1] [k2 H2].

@@ -1073,7 +1073,7 @@ Qed.
 Theorem plus_comm: forall x y, x + y == y + x.
 Proof. fromQ. Qed.
 
-Theorem plus_assoc: forall x y z, (x + y) + z == x + (y + z).
+Theorem plus_assoc: forall x y z, x + (y + z) == (x + y) + z.
 Proof. fromQ. Qed.
 
 Theorem plus_0_r: forall x, x + 0 == x.
@@ -1684,7 +1684,7 @@ Proof. fromQ. Qed.
 Theorem mult_comm: forall x y, x * y == y * x.
 Proof. fromQ. Qed.
 
-Theorem mult_assoc: forall x y z, (x * y) * z == x * (y * z).
+Theorem mult_assoc: forall x y z, x * (y * z) == (x * y) * z.
 Proof. fromQ. Qed.
 
 Theorem mult_plus_dist_l : forall x y z, x * (y + z) == x * y + x * z.
@@ -2414,7 +2414,7 @@ Proof.
   apply (iff_trans _ ((x * y) * (/ y †q) < (x * y) * (/ x †p))).
   - apply lt_mor_Proper;
       [|rewrite (mult_comm x y)];
-      rewrite mult_assoc, mult_inv_r, mult_1_r; reflexivity.
+      rewrite <- mult_assoc, mult_inv_r, mult_1_r; reflexivity.
   - apply iff_sym, mult_lt_l, H.
 Defined.
 
@@ -2436,7 +2436,7 @@ Proof.
   apply (iff_trans _ ((x * y) * (/ y †q) =/= (x * y) * (/ x †p))), (iff_trans _ (/ y †q =/= / x †p)).
   - apply apart_mor_Proper;
       [|rewrite (mult_comm x y)];
-      rewrite mult_assoc, mult_inv_r, mult_1_r; reflexivity.
+      rewrite <- mult_assoc, mult_inv_r, mult_1_r; reflexivity.
   - apply iff_sym, mult_apart_l, mult_apart_0_iff.
     split; assumption.
   - apply apart_sym_iff.
@@ -2521,6 +2521,34 @@ Proof. intros. apply mult_lt_neg_r, inv_neg; trivial. Qed.
 
 Theorem div_atm_neg : forall x y z p, z < 0 -> (x <= y <-> x / z †p >= y / z †p).
 Proof. intros. apply mult_atm_neg_r, inv_neg; trivial. Qed.
+
+Lemma minus_eqv_def : forall x y, x - y == x + (- y).
+Proof. intros. apply eqv_refl. Qed.
+
+Definition R_ring_theory :=
+  mk_rt 0 1 plus mult minus opp eqv
+    plus_0_l plus_comm plus_assoc mult_1_l mult_comm mult_assoc mult_plus_dist_r minus_eqv_def plus_opp_0_r.
+
+Lemma zero_eqv_def : Q2R 0 == 0.
+Proof. apply eqv_refl. Qed.
+
+Lemma one_eqv_def : Q2R 1 == 1.
+Proof. apply eqv_refl. Qed.
+
+Lemma Q2R_Qeq_bool : forall x y : Q, Qeq_bool x y = true -> Q2R x == Q2R y.
+Proof. intros. apply Q2R_mor, Qeq_bool_eq; trivial. Qed.
+
+Definition R_ring_morph :=
+  mkmorph 0 1 plus mult minus opp eqv 0%Q 1%Q Qplus Qmult Qminus Qopp Qeq_bool Q2R
+    zero_eqv_def one_eqv_def Q2R_plus Q2R_minus Q2R_mult Q2R_opp Q2R_Qeq_bool.
+
+Ltac Rcst t :=
+  match t with
+    | Q2R ?r => r
+    | _ => InitialRing.NotConstant
+  end.
+
+Add Ring R : R_ring_theory (morphism R_ring_morph, constants [Rcst]).
 
 Notation N2Z := Z.of_N.
 Notation Z2Q := inject_Z.

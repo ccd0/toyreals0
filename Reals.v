@@ -2544,7 +2544,7 @@ Definition R_ring_morph :=
 
 Ltac Rcst t :=
   match t with
-    | Q2R ?r => r
+    | Q2R ?r => Qcst r
     | _ => InitialRing.NotConstant
   end.
 

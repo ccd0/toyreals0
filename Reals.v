@@ -19,11 +19,15 @@ Local Open Scope set_scope.
 Definition is_element_of {A : Type} (x : A) (s : set A) := s x.
 Infix "∈" := is_element_of (at level 70, no associativity) : set_scope.
 
-Record Qinterval : Set := make_Qinterval {
-  min : Q;
-  max : Q;
+Record interval (A : Type) : Type := make_interval {
+  min : A;
+  max : A;
 }.
+Arguments min {A} i.
+Arguments max {A} i.
 
+Definition Qinterval := interval Q.
+Definition make_Qinterval (a b : Q) : Qinterval := make_interval Q a b.
 Definition QIcontents (rs : Qinterval) : set Q :=
   fun q => (min rs <= q <= max rs)%Q.
 
@@ -1511,8 +1515,8 @@ Qed.
 
 Lemma QImult_spec2 :
   forall rs ss : Qinterval, nonempty rs -> nonempty ss ->
-    (exists r s, r ∈ rs /\ s ∈ ss /\ (min (rs * ss) == r * s)%Q) /\
-    (exists r s, r ∈ rs /\ s ∈ ss /\ (max (rs * ss) == r * s)%Q).
+    (exists r s, r ∈ rs /\ s ∈ ss /\ (min (rs * ss)%QI == r * s)%Q) /\
+    (exists r s, r ∈ rs /\ s ∈ ss /\ (max (rs * ss)%QI == r * s)%Q).
 Proof.
   intros rs ss Hrs Hss.
   cbn.
@@ -2586,3 +2590,256 @@ Proof.
   - apply inv_lt_pos; trivial.
   - apply inv_involutive.
 Defined.
+
+Set Printing Projections.
+Definition Rinterval := interval R.
+Definition make_Rinterval (a b : R) : Rinterval := make_interval R a b.
+Definition RIcontents (xs : Rinterval) : set R :=
+  fun y => xs.(min) <= y /\ y <= xs.(max).
+Notation "[ a , b ]R" := (make_Rinterval a b) (at level 0, format "[ a ,  b ]R") : R_scope.
+Coercion RIcontents : Rinterval >-> set.
+
+Definition RIeq xs ys := xs.(min) == ys.(min) /\ xs.(max) == ys.(max).
+
+Lemma RIeq_refl : forall xs, RIeq xs xs.
+Proof.
+  intros.
+  split; apply eqv_refl.
+Qed.
+
+Lemma RIeq_sym : forall xs ys, RIeq xs ys -> RIeq ys xs.
+Proof.
+  unfold RIeq.
+  intros.
+  split; apply eqv_sym; tauto.
+Qed.
+
+Lemma RIeq_trans : forall xs ys zs, RIeq xs ys -> RIeq ys zs -> RIeq xs zs.
+Proof.
+  unfold RIeq.
+  intros.
+  split; [apply (eqv_trans _ ys.(min))|apply (eqv_trans _ ys.(max))]; tauto.
+Qed.
+
+Add Relation Rinterval RIeq
+  reflexivity proved by RIeq_refl
+  symmetry proved by RIeq_sym
+  transitivity proved by RIeq_trans
+  as RIeq_rel.
+
+Add Morphism RIcontents with signature (RIeq ==> eqv ==> iff) as RIcontents_mor.
+Proof.
+  intros i1 i2 [Hi1 Hi2] r1 r2 Hr.
+  unfold RIcontents.
+  rewrite Hi1, Hi2, Hr.
+  reflexivity.
+Qed.
+
+Add Morphism (@is_element_of R) with signature (eqv ==> (eqv ==> iff) ==> iff) as is_element_of_mor_R.
+Proof.
+  firstorder.
+Qed.
+
+Definition nestedRI (I : nat -> Rinterval) :=
+  forall k1 k2, (k2 >= k1)%nat -> (I k2).(min) ∈ I k1 /\ (I k2).(max) ∈ I k1.
+
+Definition convergentRI (I : nat -> Rinterval) :=
+  forall eps, eps > 0 -> exists k, (I k).(max) - (I k).(min) < eps.
+
+Lemma nestedRI_consistent : forall I, nestedRI I -> forall m1 m2, (I m1).(min) <= (I m2).(max).
+Proof.
+  intros I HI m1 m2.
+  destruct (Nat.le_ge_cases m1 m2) as [H|H]; apply (HI _ _ H).
+Qed.
+
+Fixpoint QminN (f : nat -> Q) (n : nat) :=
+  match n with
+  | 0%nat => f 0%nat
+  | S n' => Qmin (QminN f n') (f n)
+  end.
+
+Fixpoint QmaxN (f : nat -> Q) (n : nat) :=
+  match n with
+  | 0%nat => f 0%nat
+  | S n' => Qmax (QmaxN f n') (f n)
+  end.
+
+Lemma QminN_ex : forall f n, exists k, (k <= n)%nat /\ (QminN f n == f k)%Q.
+Proof.
+  intros f n.
+  induction n as [|n [k [IH1 IH2]]].
+  - exists 0%nat.
+    split; reflexivity.
+  - destruct (Q.min_spec (QminN f n) (f (S n))) as [[_ H]|[_ H]].
+    + exists k.
+      rewrite H.
+      auto.
+    + exists (S n).
+      rewrite H.
+      split; reflexivity.
+Defined.
+
+Lemma QmaxN_ex : forall f n, exists k, (k <= n)%nat /\ (QmaxN f n == f k)%Q.
+Proof.
+  intros f n.
+  induction n as [|n [k [IH1 IH2]]].
+  - exists 0%nat.
+    split; reflexivity.
+  - destruct (Q.max_spec (QmaxN f n) (f (S n))) as [[_ H]|[_ H]].
+    + exists (S n).
+      rewrite H.
+      split; reflexivity.
+    + exists k.
+      rewrite H.
+      auto.
+Defined.
+
+Lemma QminN_lb : forall f n k, (k <= n)%nat -> (QminN f n <= f k)%Q.
+Proof.
+  intros f n k Hk.
+  induction n as [|n IH].
+  - apply Nat.le_0_r in Hk.
+    rewrite Hk.
+    apply Qle_refl.
+  - destruct (le_lt_or_eq _ _ Hk) as [H|H].
+    + apply lt_n_Sm_le in H.
+      eapply Qle_trans; [|apply IH, H].
+      apply Q.le_min_l.
+    + rewrite H.
+      apply Q.le_min_r.
+Qed.
+
+Lemma QmaxN_ub : forall f n k, (k <= n)%nat -> (QmaxN f n >= f k)%Q.
+Proof.
+  intros f n k Hk.
+  induction n as [|n IH].
+  - apply Nat.le_0_r in Hk.
+    rewrite Hk.
+    apply Qle_refl.
+  - destruct (le_lt_or_eq _ _ Hk) as [H|H].
+    + apply lt_n_Sm_le in H.
+      eapply Qle_trans; [apply IH, H|].
+      apply Q.le_max_l.
+    + rewrite H.
+      apply Q.le_max_r.
+Qed.
+
+Definition nested_RI_int_bounds (I : nat -> Rinterval) :=
+  make_Stream (fun n => [QmaxN (fun m => (I m).(min).[n].(min)) n, QminN (fun m => (I m).(max).[n].(max)) n]Q).
+
+Lemma nested_RI_int_nth :
+  forall I n, (nested_RI_int_bounds I).[n] =
+    [QmaxN (fun m => (I m).(min).[n].(min)) n, QminN (fun m => (I m).(max).[n].(max)) n]Q.
+Proof.
+  setoid_rewrite make_Stream_spec; trivial.
+Qed.
+
+Lemma nested_RI_int_nested : forall I, nestedRI I -> nested (nested_RI_int_bounds I).
+Proof.
+  intros I HI n1 n2 Hn.
+  pose (nestedRI_consistent I HI) as HI2.
+  repeat rewrite nested_RI_int_nth.
+  split; (split; [set (na := n1); set (nb := n2)|set (na := n2); set (nb := n1)]); cbn;
+    destruct
+      (QminN_ex (fun m => (I m).(max).[nb].(max)) nb) as [j [Hj1 Hj2]],
+      (QmaxN_ex (fun m => (I m).(min).[na].(min)) na) as [k [Hk1 Hk2]];
+    subst na nb;
+    try rewrite Hj2; try rewrite Hk2.
+  - apply (Qle_trans _ (I k).(min).[n2].(min)).
+    + apply bounds_nested, Hn.
+    + apply (QmaxN_ub (fun m => (I m).(min).[n2].(min))).
+      eapply Nat.le_trans; eassumption.
+  - apply Qnot_lt_le.
+    intro HC.
+    apply (HI2 k j), (lt_from_bounds _ _ _ _ HC).
+  - apply Qnot_lt_le.
+    intro HC.
+    apply (HI2 k j), (lt_from_bounds _ _ _ _ HC).
+  - apply (Qle_trans _ (I j).(max).[n2].(max)).
+    + apply (QminN_lb (fun m => (I m).(max).[n2].(max))).
+      eapply Nat.le_trans; eassumption.
+    + apply bounds_nested, Hn.
+Qed.
+
+Lemma nested_RI_int_convergent' :
+  forall I k n1 n2 eps,
+    (I k).(max) - (I k).(min) < Q2R (eps/3) ->
+    (width (I k).(min).[n1] < eps/3 -> width (I k).(max).[n2] < eps/3 ->
+      let n := Nat.max k (Nat.max n1 n2) in width (nested_RI_int_bounds I).[n] < eps)%Q.
+Proof.
+  intros I k n1 n2 eps Hk Hn1 Hn2 n.
+  rewrite nested_RI_int_nth.
+  apply (Qle_lt_trans _ ((I k).(max).[n].(max) - (I k).(min).[n].(min))).
+  - assert (k <= n)%nat as Hkn by apply Nat.le_max_l.
+    apply Qplus_le_compat; cbn.
+    + apply (QminN_lb (fun m => (I m).(max).[n].(max))), Hkn.
+    + apply -> Qle_opp.
+      apply (QmaxN_ub (fun m => (I m).(min).[n].(min))), Hkn.
+  - apply (bounds_width_lt _ _ n) in Hn1, Hn2;
+      try (eapply Nat.le_trans; [|apply Nat.le_max_r]; (apply Nat.le_max_l||apply Nat.le_max_r)).
+    setoid_replace ((I k).(max).[n].(max) - (I k).(min).[n].(min))%Q with (
+      width (I k).(max).[n] + width (I k).(min).[n] + ((I k).(max).[n].(min) - (I k).(min).[n].(max))
+    )%Q by (unfold width; ring).
+    setoid_replace eps with (eps/3 + eps/3 + eps/3)%Q by field.
+    repeat apply Qplus_lt_compat; trivial.
+    apply Q2R_lt.
+    rewrite Q2R_minus.
+    eapply atm_lt_trans; [|eassumption].
+    apply atm_plus; [|apply -> atm_opp]; apply bounds_correct.
+Qed.
+
+Lemma nested_RI_int_convergent : forall I, convergentRI I -> convergent (nested_RI_int_bounds I).
+Proof.
+  intros I HI eps Heps.
+  assert (eps/3 > 0)%Q as Heps3 by (apply Qmult_pos_pos; trivial; reflexivity).
+  destruct (HI (Q2R (eps/3))) as [k Hk]; [apply Q2R_lt, Heps3|].
+  destruct (bounds_convergent (I k).(min) (eps/3)%Q) as [n1 Hn1]; trivial.
+  destruct (bounds_convergent (I k).(max) (eps/3)%Q) as [n2 Hn2]; trivial.
+  set (n := Nat.max k (Nat.max n1 n2)).
+  exists n.
+  apply nested_RI_int_convergent'; trivial.
+Defined.
+
+Definition nested_RI_int (I : nat -> Rinterval) (p : nestedRI I) (q : convergentRI I) :=
+  make_R (nested_RI_int_bounds I) (nested_RI_int_nested I p) (nested_RI_int_convergent I q).
+
+Theorem nested_RI_int_spec : forall I p q k, nested_RI_int I p q ∈ I k.
+Proof.
+  intros I p q k.
+  split;
+    intros [n Hn];
+    set (n' := Nat.max n k);
+    [
+      apply (Qle_lt_trans (nested_RI_int I p q).[n'].(min)), (Qlt_le_trans _ _ (I k).(min).[n'].(min)) in Hn |
+      apply (Qle_lt_trans (I k).(max).[n'].(max)), (Qlt_le_trans _ _ (nested_RI_int I p q).[n'].(max)) in Hn
+    ];
+    try (apply bounds_consistent || apply bounds_nested, Nat.le_max_l);
+    cbn in Hn; rewrite nested_RI_int_nth in Hn; cbn in Hn;
+    contradict Hn; apply Qle_not_lt.
+    - apply (QmaxN_ub (fun m => (I m).(min).[n'].(min))), Nat.le_max_r.
+    - apply (QminN_lb (fun m => (I m).(max).[n'].(max))), Nat.le_max_r.
+Qed.
+
+Theorem nested_RI_int_unique : forall I x y, convergentRI I -> (forall k, x ∈ I k) -> (forall k, y ∈ I k) -> x == y.
+Proof.
+  intros I x y HI Hx Hy [HC|HC];
+    [set (eps := y - x) | set (eps := x - y)];
+    assert (eps > 0) as Heps by (apply -> gt_diff_pos; apply HC);
+    destruct (HI eps Heps) as [k Hk];
+    contradict Hk;
+    (apply atm_plus; [|apply -> atm_opp]); (apply Hx || apply Hy).
+Qed.
+
+Theorem nested_RI_int_compatible :
+  forall I1 I2, (forall k, RIeq (I1 k) (I2 k)) ->
+    forall p1 p2 q1 q2, nested_RI_int I1 p1 q1 == nested_RI_int I2 p2 q2.
+Proof.
+  intros I1 I2 HI p1 p2 q1 q2.
+  apply (nested_RI_int_unique I2); trivial.
+  - intro k.
+    rewrite <- HI.
+    apply nested_RI_int_spec.
+  - apply nested_RI_int_spec.
+Qed.
+
+Unset Printing Projections.

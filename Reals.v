@@ -2701,8 +2701,9 @@ Proof.
   - apply Nat.le_0_r in Hk.
     rewrite Hk.
     apply Qle_refl.
-  - destruct (le_lt_or_eq _ _ Hk) as [H|H].
-    + apply lt_n_Sm_le in H.
+  - apply Nat.lt_eq_cases in Hk.
+    destruct Hk as [H|H].
+    + apply -> Nat.lt_succ_r in H.
       eapply Qle_trans; [|apply IH, H].
       apply Q.le_min_l.
     + rewrite H.
@@ -2716,8 +2717,9 @@ Proof.
   - apply Nat.le_0_r in Hk.
     rewrite Hk.
     apply Qle_refl.
-  - destruct (le_lt_or_eq _ _ Hk) as [H|H].
-    + apply lt_n_Sm_le in H.
+  - apply Nat.lt_eq_cases in Hk.
+    destruct Hk as [H|H].
+    + apply -> Nat.lt_succ_r in H.
       eapply Qle_trans; [apply IH, H|].
       apply Q.le_max_l.
     + rewrite H.

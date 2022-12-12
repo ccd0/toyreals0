@@ -3,3 +3,6 @@
 *.vo
 *.vok
 *.vos
+toyreals.*
+*.cmi
+*.cmo

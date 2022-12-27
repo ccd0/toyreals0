@@ -2845,3 +2845,54 @@ Proof.
 Qed.
 
 Unset Printing Projections.
+
+Lemma exists_round_index' :
+  forall (x : R) k, (width (x.[k]) < 1)%Q -> (Qfloor (max x.[k]) <= Qceiling (min x.[k]))%Z.
+Proof.
+  intros x k Hk.
+  apply Z.le_sub_0, Zlt_succ_le.
+  unfold Z.sub.
+  rewrite Zlt_Qlt, inject_Z_plus, inject_Z_opp.
+  apply (Qle_lt_trans _ (width x.[k])); trivial.
+  apply Qplus_le_compat.
+  - apply Qfloor_le.
+  - apply Qopp_le_compat, Qle_ceiling.
+Qed.
+
+Lemma exists_round_index :
+  forall x : R, exists k, (Qfloor (max x.[k]) <= Qceiling (min x.[k]))%Z.
+Proof.
+  intro x.
+  destruct (bounds_convergent x 1%Q) as [k Hk]; [reflexivity|].
+  exists k.
+  apply exists_round_index', Hk.
+Defined.
+
+Definition find_round_index (x : R) : nat :=
+  constructive_ground_epsilon_nat _
+    (fun k => Z_le_dec (Qfloor (max x.[k])) (Qceiling (min x.[k])))
+    (exists_round_index x).
+
+Definition round (x : R) : Z :=
+  Qfloor (max x.[find_round_index x]).
+
+Theorem round_spec :
+  forall x, Z2R (round x - 1) < x /\ x < Z2R (round x + 1).
+Proof.
+  intro x.
+  unfold round.
+  set (k := find_round_index x).
+  split.
+  - apply (lt_atm_trans _ (Q2R (min x.[k]))); [|apply bounds_correct].
+    apply Q2R_lt.
+    apply (Qle_lt_trans _ (Z2Q (Qceiling (min x.[k]) - 1))); [|apply Qceiling_lt].
+    rewrite <- Zle_Qle.
+    apply Z.sub_le_mono_r.
+    apply (
+      constructive_ground_epsilon_spec_nat _
+        (fun k => Z_le_dec (Qfloor (max x.[k])) (Qceiling (min x.[k])))
+        (exists_round_index x)
+    ).
+  - apply (atm_lt_trans _ (Q2R (max x.[k]))); [apply bounds_correct|].
+    apply Q2R_lt, Qlt_floor.
+Qed.

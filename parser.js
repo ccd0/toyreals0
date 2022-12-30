@@ -23,7 +23,7 @@ const infix = table({
   '=>': ['lambda', [10], 10]
 });
 
-function is_constant(token) {
+function is_nullary(token) {
   return /^\w/i.test(token);
 }
 
@@ -38,7 +38,7 @@ function parse_sub(tokens, start, level) {
   let i = start;
   let token = tokens[i];
   let result, op;
-  if (is_constant(token)) {
+  if (is_nullary(token)) {
     result = token;
     i++;
   } else if ((op = prefix(token))) {
@@ -48,7 +48,7 @@ function parse_sub(tokens, start, level) {
   }
   while (i < tokens.length) {
     token = tokens[i];
-    if (is_constant(token)) {
+    if (is_nullary(token)) {
       result = [result, token];
       i++;
     } else if ((op = infix(token))) {

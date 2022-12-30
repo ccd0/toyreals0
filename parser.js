@@ -27,6 +27,26 @@ function is_nullary(token) {
   return /^\w/i.test(token);
 }
 
+function repeat(str, n) {
+  return new Array(n+1).join(str);
+}
+
+function parse_nullary(token) {
+  if (/^\d/.test(token)) {
+    if (/\./.test(token)) {
+      const parts = token.split('.');
+      if (parts.length !== 2 || token.length === 1) throw 'parse error';
+      const num = parts[0] + parts[1];
+      const den = '1' + repeat('0', parts[1].length);
+      return ['div', ['num', num], ['num', den]];
+    } else {
+      return ['num', token];
+    }
+  } else {
+    return token;
+  }
+}
+
 function parse(tokens) {
   const [result, i] = parse_sub(tokens, 0, 0);
   if (i !== tokens.length) throw 'parse error';
@@ -39,7 +59,7 @@ function parse_sub(tokens, start, level) {
   let token = tokens[i];
   let result, op;
   if (is_nullary(token)) {
-    result = token;
+    result = parse_nullary(token);
     i++;
   } else if ((op = prefix(token))) {
     [result, i] = parse_op(op, tokens, i);
@@ -49,7 +69,7 @@ function parse_sub(tokens, start, level) {
   while (i < tokens.length) {
     token = tokens[i];
     if (is_nullary(token)) {
-      result = ['apply', result, token];
+      result = ['apply', result, parse_nullary(token)];
       i++;
     } else if ((op = infix(token))) {
       if (op[2] >= level) {

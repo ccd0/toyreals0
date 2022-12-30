@@ -49,7 +49,7 @@ function parse_sub(tokens, start, level) {
   while (i < tokens.length) {
     token = tokens[i];
     if (is_nullary(token)) {
-      result = [result, token];
+      result = ['apply', result, token];
       i++;
     } else if ((op = infix(token))) {
       if (op[2] >= level) {
@@ -62,7 +62,7 @@ function parse_sub(tokens, start, level) {
     } else if ((op = prefix(token))) {
       let arg;
       [arg, i] = parse_op(op, tokens, i);
-      result = [result, arg];
+      result = ['apply', result, arg];
     } else {
       return [result, i];
     }

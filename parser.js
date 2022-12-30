@@ -43,7 +43,7 @@ function parse_nullary(token) {
       return ['num', token];
     }
   } else {
-    return token;
+    return ['id', token];
   }
 }
 
@@ -74,6 +74,10 @@ function parse_sub(tokens, start, level) {
     } else if ((op = infix(token))) {
       if (op[2] >= level) {
         let lhs = result;
+        if (op[0] === 'lambda') {
+          if (lhs[0] !== 'id') throw 'parse error';
+          lhs = lhs[1];
+        }
         [result, i] = parse_op(op, tokens, i);
         result.splice(1, 0, lhs);
       } else {
@@ -107,6 +111,60 @@ function parse_op(op, tokens, start) {
   return [result, i];
 }
 
-return {tokenize, parse};
+function R2Z(x) {
+  const x0 = R.nth(x, 0);
+  if (x0.min.den !== 1 || x0.max.den !== 1 || x0.min.num !== x0.max.num) {
+    throw 'type error';
+  }
+  return x0.min.num;
+}
+
+const operations = table({
+  num: (x) => R.Z2R(bigInt(x)),
+  apply: (f, x) => f(x),
+  interval: (x, y) => ({min: x, max: y}),
+  inv: R.inv,
+  opp: R.opp,
+  mult: R.mult,
+  div: R.div,
+  plus: R.plus,
+  minus: R.minus
+});
+
+const constants = table({
+  min: (xs) => xs.min,
+  max: (xs) => xs.max,
+  intersect: (f) => R.nested_RI_int((i) => f(R.Z2R(i))),
+  repeat: (n) => (f) => (x) => {
+    n = R2Z(n);
+    for (let i = 0; i < n; i++) {
+      x = f(x);
+    }
+    return x;
+  }
+});
+
+function extend(table_fun, key, val) {
+  return (key2) => (key2 === key) ? val : table_fun(key2);
+}
+
+function evaluate_ast(ast, environment=constants) {
+  if (ast[0] === 'id') {
+    return environment(ast[1]);
+  } else if (ast[0] === 'lambda') {
+    return (x) => evaluate_ast(ast[2], extend(environment, ast[1], x));
+  } else {
+    const args = ast.slice(1).map(x =>
+      (typeof x === 'string') ? x : evaluate_ast(x, environment)
+    );
+    return operations(ast[0]).apply(this, args);
+  }
+}
+
+function evaluate(expr) {
+  return evaluate_ast(parse(tokenize(expr)));
+}
+
+return {tokenize, parse, evaluate_ast, evaluate};
 
 })();

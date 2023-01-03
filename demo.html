@@ -1,6 +1,49 @@
 <!doctype html>
-<html><head>
+<html lang="en"><head>
+<title>toyreals0 calculator demo</title>
 <script src="toyreals.js"></script>
 <script src="parser.js"></script>
+<style>
+.inputline {
+  display: flex;
+}
+textarea {
+  flex: 100%;
+  font-size: 150%;
+  line-height: 1;
+  margin: 0;
+}
+button {
+  font-size: 100%;
+  width: 2em;
+}
+</style>
 </head>
-<body></body></html>
+<body>
+<details><summary>source / credits / build instructions</summary>
+<p>In addition to <a href="https://github.com/ccd0/toyreals0">the main source code</a>,
+the calculator demo uses code from the following projects:</p>
+<ul>
+<li><a href="https://coq.inria.fr/">Coq</a>
+[<a href="https://github.com/coq/coq">source</a>]
+[<a href="https://github.com/coq/coq/blob/master/LICENSE">license</a>]</li>
+<li><a href="https://ocsigen.org/js_of_ocaml/latest/manual/overview">js_of_ocaml</a>
+[<a href="https://github.com/ocsigen/js_of_ocaml">source</a>]
+[<a href="https://github.com/ocsigen/js_of_ocaml/blob/master/LICENSE">license</a>]</li>
+<li><a href="https://github.com/ocaml/Zarith">Zarith</a>
+[<a href="https://github.com/ocaml/Zarith">source</a>]
+[<a href="https://github.com/ocaml/Zarith/blob/master/LICENSE">license</a>]</li>
+<li><a href="https://github.com/janestreet/zarith_stubs_js">Zarith Stubs JS</a>
+[<a href="https://github.com/janestreet/zarith_stubs_js">source</a>]
+[<a href="https://github.com/janestreet/zarith_stubs_js/blob/master/LICENSE.md">license</a>]</li>
+<li><a href="https://github.com/peterolson/BigInteger.js">BigInteger.js</a>
+(included in Zarith Stubs JS)</li>
+</ul>
+<p>The easiest way to fetch all required dependencies is to install <a href="https://opam.ocaml.org/">opam</a> and run:</p>
+<pre>opam install ocaml ocamlfind coq=8.16.0 js_of_ocaml js_of_ocaml-ppx zarith zarith_stubs_js</pre>
+<p>Then in the directory where you have downloaded the main source code, run:</p>
+<pre>./extract.sh</pre>
+</details>
+<div class="inputline"><textarea></textarea><button>=</button></div>
+<output></output>
+</body></html>

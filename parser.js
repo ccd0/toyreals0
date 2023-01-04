@@ -137,7 +137,7 @@ const constants = table({
   intersect: (f) => R.nested_RI_int((i) => f(R.Z2R(i))),
   repeat: (n) => (f) => (x) => {
     n = R2Z(n);
-    for (let i = 0; i < n; i++) {
+    for (let i = bigInt.zero; i.lt(n); i = i.add(1)) {
       x = f(x);
     }
     return x;

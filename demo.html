@@ -4,7 +4,7 @@
 <script src="toyreals.js"></script>
 <script src="parser.js"></script>
 <style>
-.inputline {
+.inputline, .outputline {
   display: flex;
 }
 textarea {
@@ -16,6 +16,11 @@ textarea {
 button {
   font-size: 100%;
   width: 2em;
+}
+output {
+  flex: 100%;
+  overflow: auto;
+  overflow-wrap: break-word;
 }
 </style>
 </head>
@@ -45,5 +50,5 @@ the calculator demo uses code from the following projects:</p>
 <pre>./extract.sh</pre>
 </details>
 <div class="inputline"><textarea></textarea><button>=</button></div>
-<output></output>
+<div class="outputline"><output></output><label><div>Digits:</div><input type="number" value="10" min="0"></label></div>
 </body></html>

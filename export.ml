@@ -36,6 +36,7 @@ let _ =
        method minus x y = minus x y
        method mult x y = mult x y
        method inv x = inv x
-       method div x y = div x y
+       method div x y = div0 x y
        method nested_RI_int_ f = nested_RI_int (fun i -> ri_from_js (Js.Unsafe.fun_call f [| Js.Unsafe.inject i |]))
+       method round x = round x
      end)

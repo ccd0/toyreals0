@@ -1,7 +1,7 @@
 const Parser = (function() {
 
 function tokenize(expr) {
-  return expr.match(/[a-z_]\w*|[\d\.]+|[<=>]+|\S/gi) || [];
+  return expr.match(/[a-z_]\w*|[\d\.]+|[<=>:]+|\S/gi) || [];
 }
 
 function table(values) {
@@ -12,7 +12,8 @@ const prefix = table({
   '(': ['paren', [0, ')']],
   '[': ['interval', [0, ',', 0, ']']],
   '/': ['inv', [70]],
-  '-': ['opp', [70]]
+  '-': ['opp', [70]],
+  'let': ['let', [0, ':=', 0, 'in', 0]]
 });
 
 const infix = table({
@@ -23,8 +24,12 @@ const infix = table({
   '=>': ['lambda', [10], 10]
 });
 
+const keywords = table({
+  'let': 1, 'in': 1
+});
+
 function is_nullary(token) {
-  return /^\w/i.test(token);
+  return /^\w/i.test(token) && !keywords(token);
 }
 
 function repeat_string(str, n) {
@@ -108,6 +113,10 @@ function parse_op(op, tokens, start) {
     }
   }
   if (name === 'paren') result = result[1];
+  if (name === 'let') {
+    if (result[1][0] !== 'id') throw 'parse error';
+    result[1] = result[1][1];
+  }
   return [result, i];
 }
 
@@ -188,6 +197,8 @@ function evaluate_ast(ast, environment=constants) {
     return id;
   } else if (ast[0] === 'lambda') {
     return (x) => evaluate_ast(ast[2], extend(environment, ast[1], x));
+  } else if (ast[0] === 'let') {
+    return evaluate_ast(ast[3], extend(environment, ast[1], evaluate_ast(ast[2], environment)));
   } else {
     const args = ast.slice(1).map(x =>
       (typeof x === 'string') ? x : evaluate_ast(x, environment)

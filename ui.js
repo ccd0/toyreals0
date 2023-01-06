@@ -41,7 +41,7 @@ function display() {
 
 button.addEventListener('click', compute);
 input.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
+  if (e.key === 'Enter' && !e.shiftKey) {
     compute();
     e.preventDefault();
   }

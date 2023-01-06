@@ -23,14 +23,19 @@ function to_digits(x, n) {
 }
 
 function display() {
-  if (result instanceof Array) {
-    try {
-      output.value = '\u2248 ' + to_digits(result, parseInt(inputDigits.value, 10));
-    } catch(e) {
-      output.value = e.toString();
+  try {
+    const n_digits = parseInt(inputDigits.value, 10);
+    if (result && result.t === 'R') {
+      output.value = `\u2248 ${to_digits(result, n_digits)}`;
+    } else if (result && result.t === 'RI') {
+      output.value = `min \u2248 ${to_digits(result.min, n_digits)}\nmax \u2248 ${to_digits(result.max, n_digits)}`;
+    } else if (typeof result === 'function') {
+      output.value = '[function]';
+    } else {
+      output.value = String(result);
     }
-  } else {
-    output.value = result.toString();
+  } catch(e) {
+    output.value = String(e);
   }
 }
 

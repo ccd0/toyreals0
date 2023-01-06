@@ -39,7 +39,7 @@ output {
 <li><b>min xs</b>: lower bound of interval xs</li>
 <li><b>max xs</b>: upper bound of interval xs</li>
 <li><b>intersect f</b>: number contained in the intervals f(0), f(1), f(2), ...; intervals must be nested and converge to zero width</li>
-<li><b>repeat n f x</b>: result of applying f to x n times</li>
+<li><b>repeat f x n</b>: result of applying f to x n times</li>
 </ul>
 <p>Ignoring a &quot;must&quot; above results in undefined behavior, which may include the calculator hanging or producing incorrect results.</p>
 </details>
@@ -68,7 +68,7 @@ the calculator demo uses code from the following projects:</p>
 <pre>./extract.sh</pre>
 </details>
 <p>Enter an expression below. Results are either rounded up or down to the given number of digits after the decimal place.</p>
-<div class="inputline"><textarea>intersect (i => repeat i (x => [4 / (min x + max x), (min x + max x) / 2]) [1, 2])</textarea><button>=</button></div>
+<div class="inputline"><textarea>intersect (repeat (x => [4 / (min x + max x), (min x + max x) / 2]) [1, 2])</textarea><button>=</button></div>
 <div class="outputline"><output></output><label><span>Digits:</span><br /><input type="number" value="10" min="0"></label></div>
 <script src="ui.js"></script>
 </body></html>

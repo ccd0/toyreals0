@@ -122,7 +122,7 @@ function R2Z(x) {
 const operations = table({
   num: (x) => R.Z2R(bigInt(x)),
   apply: (f, x) => f(x),
-  interval: (x, y) => ({min: x, max: y}),
+  interval: (x, y) => ({t: 'RI', min: x, max: y}),
   inv: R.inv,
   opp: R.opp,
   mult: R.mult,

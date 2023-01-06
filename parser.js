@@ -1,7 +1,7 @@
 const Parser = (function() {
 
 function tokenize(expr) {
-  return expr.match(/[a-z_]\w*|[\d\.]+|[<=>]+|\S/gi) || [];
+  return expr.match(/[a-z_]\w*|[\d\.]+|[<=>:]+|\S/gi) || [];
 }
 
 function table(values) {
@@ -12,7 +12,8 @@ const prefix = table({
   '(': ['paren', [0, ')']],
   '[': ['interval', [0, ',', 0, ']']],
   '/': ['inv', [70]],
-  '-': ['opp', [70]]
+  '-': ['opp', [70]],
+  'let': ['let', [0, ':=', 0, 'in', 0]]
 });
 
 const infix = table({
@@ -23,11 +24,15 @@ const infix = table({
   '=>': ['lambda', [10], 10]
 });
 
+const keywords = table({
+  'let': 1, 'in': 1
+});
+
 function is_nullary(token) {
-  return /^\w/i.test(token);
+  return /^\w/i.test(token) && !keywords(token);
 }
 
-function repeat(str, n) {
+function repeat_string(str, n) {
   return new Array(n+1).join(str);
 }
 
@@ -37,7 +42,7 @@ function parse_nullary(token) {
       const parts = token.split('.');
       if (parts.length !== 2 || token.length === 1) throw 'parse error';
       const num = parts[0] + parts[1];
-      const den = '1' + repeat('0', parts[1].length);
+      const den = '1' + repeat_string('0', parts[1].length);
       return ['div', ['num', num], ['num', den]];
     } else {
       return ['num', token];
@@ -108,6 +113,10 @@ function parse_op(op, tokens, start) {
     }
   }
   if (name === 'paren') result = result[1];
+  if (name === 'let') {
+    if (result[1][0] !== 'id') throw 'parse error';
+    result[1] = result[1][1];
+  }
   return [result, i];
 }
 
@@ -134,6 +143,30 @@ function R2Z(x, context) {
   return x0.min.num;
 }
 
+const max_index = 4 * (1 << 30) - 1;
+
+const repeat = (f) => (x) => {
+  AF(f);
+  const memo = [x];
+  return (n) => {
+    const n2 = R2Z(n);
+    if ((typeof n2 === 'number') ? (n2 < 0) : n2.lt(0)) {
+      throw 'type error';
+    }
+    if ((typeof n2 === 'number') ? (n2 < memo.length) : n2.lt(memo.length)) {
+      return memo[n2.valueOf()];
+    }
+    let x2 = memo[memo.length - 1];
+    for (let i = bigInt(memo.length - 1); i.lt(n2); i = i.add(1)) {
+      x2 = f(x2);
+      if (i.lt(max_index)) {
+        memo.push(x2);
+      }
+    }
+    return x2;
+  };
+};
+
 const operations = table({
   num: (x) => R.Z2R(bigInt(x)),
   apply: (f, x) => AF(f)(x),
@@ -150,14 +183,7 @@ const constants = table({
   min: (xs) => ARI(xs).min,
   max: (xs) => ARI(xs).max,
   intersect: (f) => R.nested_RI_int((i) => ARI(f(R.Z2R(i)))),
-  repeat: (n) => (f) => (x) => {
-    n = R2Z(n);
-    AF(f);
-    for (let i = bigInt.zero; i.lt(n); i = i.add(1)) {
-      x = f(x);
-    }
-    return x;
-  }
+  repeat: repeat
 });
 
 function extend(table_fun, key, val) {
@@ -171,6 +197,8 @@ function evaluate_ast(ast, environment=constants) {
     return id;
   } else if (ast[0] === 'lambda') {
     return (x) => evaluate_ast(ast[2], extend(environment, ast[1], x));
+  } else if (ast[0] === 'let') {
+    return evaluate_ast(ast[3], extend(environment, ast[1], evaluate_ast(ast[2], environment)));
   } else {
     const args = ast.slice(1).map(x =>
       (typeof x === 'string') ? x : evaluate_ast(x, environment)

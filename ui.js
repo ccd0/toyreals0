@@ -31,6 +31,8 @@ function display() {
       output.value = `min \u2248 ${to_digits(result.min, n_digits)}\nmax \u2248 ${to_digits(result.max, n_digits)}`;
     } else if (typeof result === 'function') {
       output.value = '[function]';
+    } else if (typeof result === 'undefined') {
+      output.value = '';
     } else {
       output.value = String(result);
     }

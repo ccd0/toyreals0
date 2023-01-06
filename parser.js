@@ -111,8 +111,23 @@ function parse_op(op, tokens, start) {
   return [result, i];
 }
 
-function R2Z(x) {
-  const x0 = R.nth(x, 0);
+function AR(x, context) {
+  if (!x || x.t !== 'R') throw 'type error';
+  return x;
+}
+
+function ARI(x, context) {
+  if (!x || x.t !== 'RI') throw 'type error';
+  return x;
+}
+
+function AF(x) {
+  if (typeof x !== 'function') throw 'type error';
+  return x;
+}
+
+function R2Z(x, context) {
+  const x0 = R.nth(AR(x), 0);
   if (x0.min.den !== 1 || x0.max.den !== 1 || x0.min.num !== x0.max.num) {
     throw 'type error';
   }
@@ -121,22 +136,23 @@ function R2Z(x) {
 
 const operations = table({
   num: (x) => R.Z2R(bigInt(x)),
-  apply: (f, x) => f(x),
-  interval: (x, y) => ({t: 'RI', min: x, max: y}),
-  inv: R.inv,
-  opp: R.opp,
-  mult: R.mult,
-  div: R.div,
-  plus: R.plus,
-  minus: R.minus
+  apply: (f, x) => AF(f)(x),
+  interval: (x, y) => ({t: 'RI', min: AR(x), max: AR(y)}),
+  inv: (x) => R.inv(AR(x)),
+  opp: (x) => R.opp(AR(x)),
+  mult: (x, y) => R.mult(AR(x), AR(y)),
+  div: (x, y) => R.div(AR(x), AR(y)),
+  plus: (x, y) => R.plus(AR(x), AR(y)),
+  minus: (x, y) => R.minus(AR(x), AR(y))
 });
 
 const constants = table({
-  min: (xs) => xs.min,
-  max: (xs) => xs.max,
-  intersect: (f) => R.nested_RI_int((i) => f(R.Z2R(i))),
+  min: (xs) => ARI(xs).min,
+  max: (xs) => ARI(xs).max,
+  intersect: (f) => R.nested_RI_int((i) => ARI(f(R.Z2R(i)))),
   repeat: (n) => (f) => (x) => {
     n = R2Z(n);
+    AF(f);
     for (let i = bigInt.zero; i.lt(n); i = i.add(1)) {
       x = f(x);
     }
@@ -150,7 +166,9 @@ function extend(table_fun, key, val) {
 
 function evaluate_ast(ast, environment=constants) {
   if (ast[0] === 'id') {
-    return environment(ast[1]);
+    const id = environment(ast[1]);
+    if (!id) throw `undefined identifier "${ast[1]}"`;
+    return id;
   } else if (ast[0] === 'lambda') {
     return (x) => evaluate_ast(ast[2], extend(environment, ast[1], x));
   } else {

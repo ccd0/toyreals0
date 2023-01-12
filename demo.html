@@ -41,6 +41,7 @@ output {
 <li><b>max xs</b>: upper bound of interval xs</li>
 <li><b>intersect f</b>: number contained in the intervals f(0), f(1), f(2), ...; intervals must be nested and converge to zero width</li>
 <li><b>repeat f x n</b>: result of applying f to x n times</li>
+<li><b>round x</b>: result of either rounding x up to the next integer or rounding x down to the previous integer</li>
 <li><b>piecewise a f g x</b>: yields f(x) when x &#8804; a and g(x) when x &#8805; a; if f(x) differs from g(x), x must differ from a</li>
 </ul>
 <p>Ignoring a &quot;must&quot; above results in undefined behavior, which may include the calculator hanging or producing incorrect results.</p>

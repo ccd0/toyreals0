@@ -187,7 +187,7 @@ const operations = table({
 const constants = table({
   min: (xs) => ARI(xs).min,
   max: (xs) => ARI(xs).max,
-  intersect: (f) => R.nested_RI_int((i) => ARI(f(R.Z2R(i)))),
+  intersect: (f) => (AF(f), R.nested_RI_int((i) => ARI(f(R.Z2R(i))))),
   repeat: repeat,
   piecewise: (a) => (f) => (g) => (x) => R.piecewise(AR(a), AFR(f), AFR(g), AR(x))
 });

@@ -1,7 +1,7 @@
 const Parser = (function() {
 
 function tokenize(expr) {
-  return expr.match(/[a-z_]\w*|[\d\.]+|[<=>:]+|\S/gi) || [];
+  return expr.match(/[a-z_]\w*|\d+\.\d+|\d+\.(?![\w\[])|\d+|\.\w+|\.\[|[<=>:]+|\S/gi) || [];
 }
 
 function table(values) {
@@ -17,6 +17,7 @@ const prefix = table({
 });
 
 const infix = table({
+  '.[': ['nth', [0, ']'], 90],
   '*': ['mult', [61], 60],
   '/': ['div', [61], 60],
   '+': ['plus', [51], 50],
@@ -29,7 +30,7 @@ const keywords = table({
 });
 
 function is_nullary(token) {
-  return /^\w/i.test(token) && !keywords(token);
+  return /^\w|^\.\d/i.test(token) && !keywords(token);
 }
 
 function repeat_string(str, n) {
@@ -37,7 +38,7 @@ function repeat_string(str, n) {
 }
 
 function parse_nullary(token) {
-  if (/^\d/.test(token)) {
+  if (/^\d|^\./.test(token)) {
     if (/\./.test(token)) {
       const parts = token.split('.');
       if (parts.length !== 2 || token.length === 1) throw 'parse error';
@@ -140,12 +141,16 @@ function AFR(f) {
   return (x) => AR(f(x));
 }
 
-function R2Z(x, context) {
+function AN(x) {
   const x0 = R.nth(AR(x), 0);
   if (x0.min.den !== 1 || x0.max.den !== 1 || x0.min.num !== x0.max.num) {
     throw 'type error';
   }
-  return x0.min.num;
+  const n = x0.min.num;
+  if ((typeof n === 'number') ? (n < 0) : n.lt(0)) {
+    throw 'type error';
+  }
+  return n;
 }
 
 const max_index = 4 * (1 << 30) - 1;
@@ -154,10 +159,7 @@ const repeat = (f) => (x) => {
   AF(f);
   const memo = [x];
   return (n) => {
-    const n2 = R2Z(n);
-    if ((typeof n2 === 'number') ? (n2 < 0) : n2.lt(0)) {
-      throw 'type error';
-    }
+    const n2 = AN(n);
     if ((typeof n2 === 'number') ? (n2 < memo.length) : n2.lt(memo.length)) {
       return memo[n2.valueOf()];
     }
@@ -172,12 +174,15 @@ const repeat = (f) => (x) => {
   };
 };
 
+const QI2RI = (xs) => ({t: 'RI', min: R.Q2R(xs.min), max: R.Q2R(xs.max)});
+
 const operations = table({
   num: (x) => R.Z2R(bigInt(x)),
   apply: (f, x) => AF(f)(x),
   interval: (x, y) => ({t: 'RI', min: AR(x), max: AR(y)}),
   inv: (x) => R.inv(AR(x)),
   opp: (x) => R.opp(AR(x)),
+  nth: (x, n) => QI2RI(R.nth(AR(x), AN(n))),
   mult: (x, y) => R.mult(AR(x), AR(y)),
   div: (x, y) => R.div(AR(x), AR(y)),
   plus: (x, y) => R.plus(AR(x), AR(y)),

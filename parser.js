@@ -135,6 +135,11 @@ function AF(x) {
   return x;
 }
 
+function AFR(f) {
+  f = AF(f);
+  return (x) => AR(f(x));
+}
+
 function R2Z(x, context) {
   const x0 = R.nth(AR(x), 0);
   if (x0.min.den !== 1 || x0.max.den !== 1 || x0.min.num !== x0.max.num) {
@@ -183,7 +188,8 @@ const constants = table({
   min: (xs) => ARI(xs).min,
   max: (xs) => ARI(xs).max,
   intersect: (f) => R.nested_RI_int((i) => ARI(f(R.Z2R(i)))),
-  repeat: repeat
+  repeat: repeat,
+  piecewise: (a) => (f) => (g) => (x) => R.piecewise(AR(a), AFR(f), AFR(g), AR(x))
 });
 
 function extend(table_fun, key, val) {

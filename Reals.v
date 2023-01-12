@@ -37,6 +37,7 @@ Bind Scope QI_scope with Qinterval.
 Local Open Scope QI_scope.
 Notation "[ a , b ]Q" := (make_Qinterval a b) (at level 0, format "[ a ,  b ]Q") : QI_scope.
 Notation "s .[ k ]" := (Str_nth k s) (at level 2, left associativity, format "s .[ k ]") : QI_scope.
+Set Printing Projections.
 
 Coercion QIcontents : Qinterval >-> set.
 
@@ -230,17 +231,20 @@ Proof.
   - apply Nat.le_max_r.
 Defined.
 
+Lemma bounds_QIlt : forall (x y : R) k1 k2, (k2 >= k1)%nat -> (x.[k1] < y.[k1] -> x.[k2] < y.[k2])%QI.
+Proof.
+  intros x y k1 k2 Hk H.
+  apply (Qle_lt_trans _ x.[k1].(max)), (Qlt_le_trans _ y.[k1].(min));
+    try apply bounds_nested; assumption.
+Qed.
+
 Lemma lt_common_witness : forall a b c d, a < b -> c < d -> exists k, (a.[k] < b.[k] /\ c.[k] < d.[k])%QI.
 Proof.
   intros a b c d [k1 H1] [k2 H2].
   set (k3 := Nat.max k1 k2).
   exists k3.
-  split;
-    [apply (Qle_lt_trans _ (max a.[k1])), (Qlt_le_trans _ (min b.[k1]))
-    |apply (Qle_lt_trans _ (max c.[k2])), (Qlt_le_trans _ (min d.[k2]))];
-  trivial;
-  apply bounds_nested;
-  (apply Nat.le_max_l || apply Nat.le_max_r).
+  split; (eapply bounds_QIlt; [|eassumption]);
+    [apply Nat.le_max_l|apply Nat.le_max_r].
 Defined.
 
 Theorem lt_trans : forall x y z, x < y -> y < z -> x < z.
@@ -460,12 +464,20 @@ Proof.
     exact H1.
 Defined.
 
+Theorem apart_broken_chain : forall x y z, x =/= z -> x =/= y \/ y =/= z.
+Proof.
+  intros x y z [H|H]; apply (lt_or _ _ y) in H; destruct H as [H|H].
+  - right. left. exact H.
+  - left. left. exact H.
+  - left. right. exact H.
+  - right. right. exact H.
+Defined.
+
 Theorem eqv_trans : forall x y z, x == y -> y == z -> x == z.
 Proof.
-  intros x y z H1 H2.
-  apply atm_atl_eqv.
-  - apply (atm_trans _ y); apply eqv_atm; trivial.
-  - apply (atm_trans _ y); apply eqv_atl; trivial.
+  intros x y z H1 H2 HC.
+  apply (apart_broken_chain _ y) in HC.
+  destruct HC as [HC|HC]; contradiction.
 Qed.
 
 Theorem lt_eqv_trans : forall x y z, x < y -> y == z -> x < z.
@@ -935,18 +947,26 @@ Proof.
     apply Qle_not_lt, bounds_consistent.
 Qed.
 
+Lemma QI_common_point :
+  forall (u v : Qinterval), nonempty u -> nonempty v -> ~ (u < v)%QI -> ~ (v < u)%QI ->
+    let r := Qmax u.(min) v.(min) in r ∈ u /\ r ∈ v.
+Proof.
+  intros u v Hu Hv H1 H2 r.
+  subst r.
+  split; split; try (apply Q.le_max_l || apply Q.le_max_r);
+    destruct (Q.max_spec u.(min) v.(min)) as [[_ H3]|[_ H3]];
+    rewrite H3;
+    try assumption;
+    apply Qnot_lt_le; assumption.
+Qed.
+
 Lemma eqv_common_point1 :
   forall x y, x == y -> forall k, let r := Qmax (min x.[k]) (min y.[k]) in r ∈ x.[k] /\ r ∈ y.[k].
 Proof.
-  intros x y H k r.
-  subst r.
-  split; split; try (apply Q.le_max_l || apply Q.le_max_r);
-    destruct (Q.max_spec (min x.[k]) (min y.[k])) as [[_ H2]|[_ H2]];
-    rewrite H2;
-    try apply bounds_consistent;
-    apply Qnot_lt_le;
-    intro H3; apply H;
-    [left|right]; exists k; exact H3.
+  intros x y H k.
+  apply QI_common_point; try apply bounds_nonempty;
+    intro HC; apply H;
+    [left|right]; exists k; exact HC.
 Qed.
 
 Lemma eqv_common_point2 : forall x y : R, (forall k, exists r, r ∈ x.[k] /\ r ∈ y.[k]) -> x == y.
@@ -2591,7 +2611,6 @@ Proof.
   - apply inv_involutive.
 Defined.
 
-Set Printing Projections.
 Definition Rinterval := interval R.
 Definition make_Rinterval (a b : R) : Rinterval := make_interval R a b.
 Definition RIcontents (xs : Rinterval) : set R :=
@@ -2844,8 +2863,6 @@ Proof.
   - apply nested_RI_int_spec.
 Qed.
 
-Unset Printing Projections.
-
 Lemma exists_round_index' :
   forall (x : R) k, (width (x.[k]) < 1)%Q -> (Qfloor (max x.[k]) <= Qceiling (min x.[k]))%Z.
 Proof.
@@ -2896,3 +2913,329 @@ Proof.
   - apply (atm_lt_trans _ (Q2R (max x.[k]))); [apply bounds_correct|].
     apply Q2R_lt, Qlt_floor.
 Qed.
+
+Lemma apart_broken_chain_4var : forall w x y z, w =/= z -> w =/= x \/ x =/= y \/ y =/= z.
+Proof.
+  intros w x y z H.
+  apply (apart_broken_chain _ x) in H.
+  destruct H as [H|H]; [left; exact H|].
+  right.
+  apply apart_broken_chain, H.
+Defined.
+
+Theorem apart_respectful_piecewise_cond :
+  forall a f g,
+    f a == g a ->
+    (forall x, f x =/= f a -> x =/= a) ->
+    (forall x, g x =/= g a -> x =/= a) ->
+      forall x, f x =/= g x -> x =/= a.
+Proof.
+  intros a f g Ha Hf Hg x Hx.
+  apply (apart_broken_chain_4var _ (f a) (g a)) in Hx.
+  destruct Hx as [Hx|[Hx|Hx]].
+  - apply Hf, Hx.
+  - contradiction.
+  - apply Hg, apart_sym, Hx.
+Qed.
+
+Definition piecewise_bounds (a : R) (f g : R -> R) (x : R) :=
+  make_Stream (fun k =>
+    if QIlt_dec x.[k] a.[k] then
+      (f x).[k]
+    else if QIlt_dec a.[k] x.[k] then
+      (g x).[k]
+    else
+      [Qmin (f x).[k].(min) (g x).[k].(min), Qmax (f x).[k].(max) (g x).[k].(max)]Q
+  ).
+
+Lemma piecewise_nth :
+  forall a f g x k, (piecewise_bounds a f g x).[k] =
+    if QIlt_dec x.[k] a.[k] then
+      (f x).[k]
+    else if QIlt_dec a.[k] x.[k] then
+      (g x).[k]
+    else
+      [Qmin (f x).[k].(min) (g x).[k].(min), Qmax (f x).[k].(max) (g x).[k].(max)]Q.
+Proof.
+  setoid_rewrite make_Stream_spec; trivial.
+Qed.
+
+Lemma piecewise_nth_case1 :
+  forall (a : R) f g (x : R) k, (x.[k] < a.[k])%QI -> (piecewise_bounds a f g x).[k] = (f x).[k].
+Proof.
+  intros a f g x k H.
+  rewrite piecewise_nth.
+  destruct (QIlt_dec x.[k] a.[k]) as [H2|H2]; [reflexivity|contradiction].
+Qed.
+
+Lemma QI_lt_not_gt :
+  forall (u v : Qinterval), nonempty u -> nonempty v -> (u < v)%QI -> ~ (v < u)%QI.
+Proof.
+  intros u v Hu Hv H1 H2.
+  apply (Qle_lt_trans u.(min)), (Qlt_le_trans _ _ v.(max)) in H1.
+  - apply Qlt_le_weak, Qle_not_lt in H1.
+    contradiction.
+  - apply Hv.
+  - apply Hu.
+Qed.
+
+Lemma piecewise_nth_case2 :
+  forall (a : R) f g (x : R) k, (x.[k] > a.[k])%QI -> (piecewise_bounds a f g x).[k] = (g x).[k].
+Proof.
+  intros a f g x k H.
+  rewrite piecewise_nth.
+  destruct (QIlt_dec x.[k] a.[k]) as [H2|H2]; [|destruct (QIlt_dec a.[k] x.[k]) as [H3|H3]].
+  - apply QI_lt_not_gt in H; try apply bounds_nonempty.
+    contradiction.
+  - reflexivity.
+  - contradiction.
+Qed.
+
+Lemma piecewise_nth_case3 :
+  forall (a : R) f g (x : R) k, ~ (x.[k] < a.[k])%QI -> ~ (x.[k] > a.[k])%QI ->
+    (piecewise_bounds a f g x).[k] = [Qmin (f x).[k].(min) (g x).[k].(min), Qmax (f x).[k].(max) (g x).[k].(max)]Q.
+Proof.
+  intros a f g x k H1 H2.
+  rewrite piecewise_nth.
+  destruct (QIlt_dec x.[k] a.[k]) as [H3|H3]; [|destruct (QIlt_dec a.[k] x.[k]) as [H4|H4]];
+    try contradiction.
+  reflexivity.
+Qed.
+
+Lemma QI_le_subset :
+  forall r (u v : Qinterval), r ∈ u -> (v.(min) <= u.(min))%Q -> (u.(max) <= v.(max))%Q -> r ∈ v.
+Proof.
+  intros r u v [H1 H2] H3 H4.
+  split; eapply Qle_trans; eassumption.
+Qed.
+
+Lemma QI_le_subset_2elem :
+  forall r s (u v : Qinterval), (r ∈ u /\ s ∈ u) -> (v.(min) <= u.(min))%Q -> (u.(max) <= v.(max))%Q -> (r ∈ v /\ s ∈ v).
+Proof.
+  intros r s u v [H1 H2] H3 H4.
+  split; eapply QI_le_subset; eassumption.
+Qed.
+
+Lemma piecewise_nested : forall a f g x, nested (piecewise_bounds a f g x).
+Proof.
+  intros a f g x k1 k2 Hk.
+  destruct (QIlt_dec x.[k1] a.[k1]) as [H1|H1]; [|destruct (QIlt_dec a.[k1] x.[k1]) as [H2|H2]].
+  - pose (bounds_QIlt x a k1 k2 Hk H1) as H2.
+    repeat rewrite piecewise_nth_case1; trivial.
+    split; apply bounds_nested; trivial.
+  - pose (bounds_QIlt a x k1 k2 Hk H2) as H3.
+    repeat rewrite piecewise_nth_case2; trivial.
+    split; apply bounds_nested; trivial.
+  - assert (Qmin (f x).[k2].(min) (g x).[k2].(min) >= Qmin (f x).[k1].(min) (g x).[k1].(min))%Q as H3
+      by (apply Q.min_le_compat; apply bounds_nested; trivial).
+    assert (Qmax (f x).[k2].(max) (g x).[k2].(max) <= Qmax (f x).[k1].(max) (g x).[k1].(max))%Q as H4
+      by (apply Q.max_le_compat; apply bounds_nested; trivial).
+    rewrite (piecewise_nth_case3 _ _ _ _ k1); trivial.
+    set (u := [Qmin (f x).[k2].(min) (g x).[k2].(min), Qmax (f x).[k2].(max) (g x).[k2].(max)]Q).
+    apply (QI_le_subset_2elem _ _ u);
+      [|apply Q.min_le_compat|apply Q.max_le_compat];
+      try apply bounds_nested, Hk.
+    destruct (QIlt_dec x.[k2] a.[k2]) as [H5|H5]; [|destruct (QIlt_dec a.[k2] x.[k2]) as [H6|H6]].
+    + rewrite piecewise_nth_case1; trivial.
+      apply (QI_le_subset_2elem _ _ (f x).[k2]);
+        [apply nonempty_min_max, bounds_nonempty|apply Q.le_min_l|apply Q.le_max_l].
+    + rewrite piecewise_nth_case2; trivial.
+      apply (QI_le_subset_2elem _ _ (g x).[k2]);
+        [apply nonempty_min_max, bounds_nonempty|apply Q.le_min_r|apply Q.le_max_r].
+    + rewrite piecewise_nth_case3; trivial.
+      apply nonempty_min_max.
+      apply (Qle_trans _ (f x).[k2].(min)), (Qle_trans _ (f x).[k2].(max));
+        [apply Q.le_min_l|apply bounds_nonempty|apply Q.le_max_l].
+Qed.
+
+Lemma Qhalf_pos_lt : (forall r s, r > 0 -> s < r / 2 -> s < r)%Q.
+Proof.
+  intros r s H H2.
+  apply (Qlt_trans _ (r / 2)); trivial.
+  rewrite <- (Qmult_1_r r) at 2.
+  apply Qmult_lt_l; trivial.
+  reflexivity.
+Qed.
+
+Lemma piecewise_convergent' :
+  (forall a f g, (forall x, f x =/= g x -> x =/= a) -> forall x eps k1 k2,
+    eps > 0 -> width (f x).[k1] < eps / 2 -> width (g x).[k2] < eps / 2 ->
+    ~ ((f x).[k1] < (g x).[k2] \/ (g x).[k2] < (f x).[k1])%QI ->
+      width (piecewise_bounds a f g x).[Nat.max k1 k2] < eps)%Q.
+Proof.
+  intros a f g p x eps k1 k2 Heps Hk1 Hk2 H.
+  set (k := Nat.max k1 k2).
+  set (r := Qmax (f x).[k1].(min) (g x).[k2].(min)).
+  assert (r ∈ (f x).[k1] /\ r ∈ (g x).[k2]) as Hr
+    by (apply QI_common_point; tauto || apply bounds_nonempty).
+  destruct (QIlt_dec x.[k] a.[k]) as [H1|H1]; [|destruct (QIlt_dec a.[k] x.[k]) as [H2|H2]].
+  - rewrite piecewise_nth_case1; trivial.
+    apply Qhalf_pos_lt, (bounds_width_lt _ k1); trivial; apply Nat.le_max_l.
+  - rewrite piecewise_nth_case2; trivial.
+    apply Qhalf_pos_lt, (bounds_width_lt _ k2); trivial; apply Nat.le_max_r.
+  - rewrite piecewise_nth_case3; trivial.
+    unfold width in *.
+    cbn.
+    setoid_replace (Qmax (f x).[k].(max) (g x).[k].(max) - Qmin (f x).[k].(min) (g x).[k].(min))%Q
+      with ((Qmax (f x).[k].(max) (g x).[k].(max) - r) + (r - Qmin (f x).[k].(min) (g x).[k].(min)))%Q
+      by ring.
+    setoid_replace eps with (eps / 2 + eps / 2)%Q by field.
+    apply Qplus_lt_compat.
+    + destruct (Q.max_dec (f x).[k].(max) (g x).[k].(max)) as [E|E]; rewrite E.
+      * eapply Qle_lt_trans; [|apply Hk1].
+        apply Qplus_le_compat, Qopp_le_compat;
+          [apply bounds_nested, Nat.le_max_l|apply Hr].
+      * eapply Qle_lt_trans; [|apply Hk2].
+        apply Qplus_le_compat, Qopp_le_compat;
+          [apply bounds_nested, Nat.le_max_r|apply Hr].
+    + destruct (Q.min_dec (f x).[k].(min) (g x).[k].(min)) as [E|E]; rewrite E.
+      * eapply Qle_lt_trans; [|apply Hk1].
+        apply Qplus_le_compat, Qopp_le_compat;
+          [apply Hr|apply bounds_nested, Nat.le_max_l].
+      * eapply Qle_lt_trans; [|apply Hk2].
+        apply Qplus_le_compat, Qopp_le_compat;
+          [apply Hr|apply bounds_nested, Nat.le_max_r].
+Qed.
+
+Lemma piecewise_convergent :
+  forall a f g, (forall x, f x =/= g x -> x =/= a) -> forall x, convergent (piecewise_bounds a f g x).
+Proof.
+  intros a f g p x eps Heps.
+  assert (eps / 2 > 0)%Q as Heps2 by (apply Qhalf_pos; trivial).
+  destruct (bounds_convergent (f x) (eps / 2)%Q Heps2) as [k1 Hk1].
+  destruct (bounds_convergent (g x) (eps / 2)%Q Heps2) as [k2 Hk2].
+  destruct (or_dec (QIlt_dec (f x).[k1] (g x).[k2]) (QIlt_dec (g x).[k2] (f x).[k1])) as [H|H].
+  - assert (f x =/= g x) as H2
+      by (destruct H; [left|right]; eapply lt_from_bounds; eassumption).
+    apply p in H2.
+    destruct H2 as [[k3 H2]|[k3 H2]].
+    + set (k := Nat.max k1 k3).
+      exists k.
+      apply (bounds_QIlt _ _ _ k) in H2; [|apply Nat.le_max_r].
+      rewrite piecewise_nth_case1; trivial.
+      apply Qhalf_pos_lt, (bounds_width_lt _ k1); trivial; apply Nat.le_max_l.
+    + set (k := Nat.max k2 k3).
+      exists k.
+      apply (bounds_QIlt _ _ _ k) in H2; [|apply Nat.le_max_r].
+      rewrite piecewise_nth_case2; trivial.
+      apply Qhalf_pos_lt, (bounds_width_lt _ k2); trivial; apply Nat.le_max_l.
+  - exists (Nat.max k1 k2).
+    apply piecewise_convergent'; trivial.
+Defined.
+
+Definition piecewise (a : R) (f g : R -> R) (p : forall x, f x =/= g x -> x =/= a) (x : R) :=
+  make_R (piecewise_bounds a f g x) (piecewise_nested a f g x) (piecewise_convergent a f g p x).
+
+Lemma piecewise_spec_apart1' :
+  forall a f g p x k,
+    ((piecewise a f g p x).[k] < (f x).[k] \/ (f x).[k] < (piecewise a f g p x).[k] ->
+      x.[k] > a.[k])%QI.
+Proof.
+  intros a f g p x k H.
+  unfold piecewise in H.
+  cbn in H.
+  destruct (QIlt_dec x.[k] a.[k]) as [H1|H1]; [|destruct (QIlt_dec a.[k] x.[k]) as [H2|H2]].
+  - rewrite piecewise_nth_case1 in H; trivial.
+    destruct H; apply Qlt_not_le in H; contradict H; apply bounds_nonempty.
+  - exact H2.
+  - rewrite piecewise_nth_case3 in H; trivial.
+    destruct H.
+    + eapply Qlt_le_trans in H; [|apply bounds_nonempty].
+      apply Qlt_not_le in H; contradict H; apply Q.le_max_l.
+    + eapply Qle_lt_trans in H; [|apply bounds_nonempty].
+      apply Qlt_not_le in H; contradict H; apply Q.le_min_l.
+Qed.
+
+Lemma piecewise_spec_apart2' :
+  forall a f g p x k,
+    ((piecewise a f g p x).[k] < (g x).[k] \/ (g x).[k] < (piecewise a f g p x).[k] ->
+      x.[k] < a.[k])%QI.
+Proof.
+  intros a f g p x k H.
+  unfold piecewise in H.
+  cbn in H.
+  destruct (QIlt_dec x.[k] a.[k]) as [H1|H1]; [|destruct (QIlt_dec a.[k] x.[k]) as [H2|H2]].
+  - exact H1.
+  - rewrite piecewise_nth_case2 in H; trivial.
+    destruct H; apply Qlt_not_le in H; contradict H; apply bounds_nonempty.
+  - rewrite piecewise_nth_case3 in H; trivial.
+    destruct H.
+    + eapply Qlt_le_trans in H; [|apply bounds_nonempty].
+      apply Qlt_not_le in H; contradict H; apply Q.le_max_r.
+    + eapply Qle_lt_trans in H; [|apply bounds_nonempty].
+      apply Qlt_not_le in H; contradict H; apply Q.le_min_r.
+Qed.
+
+Theorem piecewise_spec_apart1 : forall a f g p x, piecewise a f g p x =/= f x -> x > a.
+Proof.
+  intros a f g p x H.
+  apply or_ex_ex_or in H.
+  destruct H as [k H].
+  exists k.
+  apply (piecewise_spec_apart1' a f g p x); trivial.
+Defined.
+
+Theorem piecewise_spec_apart2 : forall a f g p x, piecewise a f g p x =/= g x -> x < a.
+Proof.
+  intros a f g p x H.
+  apply or_ex_ex_or in H.
+  destruct H as [k H].
+  exists k.
+  apply (piecewise_spec_apart2' a f g p x); trivial.
+Defined.
+
+Theorem piecewise_spec_eqv1 : forall a f g p x, x <= a -> piecewise a f g p x == f x.
+Proof.
+  intros a f g p x H1 H2.
+  apply piecewise_spec_apart1, H1 in H2.
+  exact H2.
+Qed.
+
+Theorem piecewise_spec_eqv2 : forall a f g p x, x >= a -> piecewise a f g p x == g x.
+Proof.
+  intros a f g p x H1 H2.
+  apply piecewise_spec_apart2, H1 in H2.
+  exact H2.
+Qed.
+
+Theorem piecewise_compatible_apart :
+  forall a1 a2 f1 f2 g1 g2 p1 p2 x1 x2,
+    piecewise a1 f1 g1 p1 x1 =/= piecewise a2 f2 g2 p2 x2 ->
+      a1 =/= a2 \/ f1 x1 =/= f2 x2 \/ g1 x1 =/= g2 x2 \/ x1 =/= x2.
+Proof.
+  intros a1 a2 f1 f2 g1 g2 p1 p2 x1 x2 H.
+  destruct (apart_broken_chain_4var _ (f1 x1) (f2 x2) _ H) as [H1|[H1|H1]].
+  - apply piecewise_spec_apart1 in H1.
+    destruct (apart_broken_chain_4var _ (g1 x1) (g2 x2) _ H) as [H2|[H2|H2]].
+    + apply piecewise_spec_apart2 in H2.
+      apply lt_not_gt in H2; contradiction.
+    + right; right; left; exact H2.
+    + apply apart_sym, piecewise_spec_apart2 in H2.
+      destruct (lt_or _ _ a1 H2) as [H3|H3].
+      * left; left; exact H3.
+      * right; right; right; right.
+        eapply lt_trans; eassumption.
+  - right; left; exact H1.
+  - apply apart_sym, piecewise_spec_apart1 in H1.
+    destruct (apart_broken_chain_4var _ (g1 x1) (g2 x2) _ H) as [H2|[H2|H2]].
+    + apply piecewise_spec_apart2 in H2.
+      destruct (lt_or _ _ a2 H2) as [H3|H3].
+      * left; right; exact H3.
+      * right; right; right; left.
+        eapply lt_trans; eassumption.
+    + right; right; left; exact H2.
+    + apply apart_sym, piecewise_spec_apart2 in H2.
+      apply lt_not_gt in H2; contradiction.
+Defined.
+
+Theorem piecewise_compatible :
+  forall a1 a2 f1 f2 g1 g2 p1 p2 x1 x2,
+    a1 == a2 -> f1 x1 == f2 x2 -> g1 x1 == g2 x2 -> x1 == x2 ->
+      piecewise a1 f1 g1 p1 x1 == piecewise a2 f2 g2 p2 x2.
+Proof.
+  intros a1 a2 f1 f2 g1 g2 p1 p2 x1 x2 Ha Hf Hg Hx HC.
+  apply piecewise_compatible_apart in HC.
+  destruct HC as [HC|[HC|[HC|HC]]]; contradiction.
+Qed.
+
+Unset Printing Projections.

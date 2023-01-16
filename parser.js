@@ -175,6 +175,7 @@ const repeat = (f) => (x) => {
 };
 
 const QI2RI = (xs) => ({t: 'RI', min: R.Q2R(xs.min), max: R.Q2R(xs.max)});
+const RI2QI = (xs) => ({t: 'QI', min: R.nth(xs.min, 0).min, max: R.nth(xs.max, 0).max});
 
 const operations = table({
   num: (x) => R.Z2R(bigInt(x)),
@@ -192,6 +193,7 @@ const operations = table({
 const constants = table({
   min: (xs) => ARI(xs).min,
   max: (xs) => ARI(xs).max,
+  make: (f) => (AF(f), R.make((i) => RI2QI(ARI(f(R.Z2R(i)))))),
   intersect: (f) => (AF(f), R.nested_RI_int((i) => ARI(f(R.Z2R(i))))),
   repeat: repeat,
   round: (x) => R.round(AR(x)),

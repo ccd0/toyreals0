@@ -5,7 +5,7 @@ function tokenize(expr) {
 }
 
 function table(values) {
-  return Map.prototype.get.bind(new Map(Object.entries(values)));
+  return Map.prototype.get.bind(new Map(Object.keys(values).map(k => [k, values[k]])));
 }
 
 const prefix = table({
@@ -61,9 +61,9 @@ function parse(tokens) {
 
 function parse_sub(tokens, start, level) {
   if (start >= tokens.length) throw 'parse error';
-  let i = start;
-  let token = tokens[i];
-  let result, op;
+  var i = start;
+  var token = tokens[i];
+  var result, op;
   if (is_nullary(token)) {
     result = parse_nullary(token);
     i++;
@@ -79,7 +79,7 @@ function parse_sub(tokens, start, level) {
       i++;
     } else if ((op = infix(token))) {
       if (op[2] >= level) {
-        let lhs = result;
+        var lhs = result;
         if (op[0] === 'lambda') {
           if (lhs[0] !== 'id') throw 'parse error';
           lhs = lhs[1];
@@ -90,7 +90,7 @@ function parse_sub(tokens, start, level) {
         return [result, i];
       }
     } else if ((op = prefix(token))) {
-      let arg;
+      var arg;
       [arg, i] = parse_op(op, tokens, i);
       result = ['apply', result, arg];
     } else {
@@ -102,10 +102,10 @@ function parse_sub(tokens, start, level) {
 
 function parse_op(op, tokens, start) {
   const [name, parts] = op;
-  let result = [name];
-  let i = start + 1;
-  let arg;
-  for (let part of parts) {
+  var result = [name];
+  var i = start + 1;
+  var arg;
+  for (var part of parts) {
     if (typeof part === 'number') {
       [arg, i] = parse_sub(tokens, i, part);
       result.push(arg);
@@ -163,8 +163,8 @@ const repeat = (f) => (x) => {
     if ((typeof n2 === 'number') ? (n2 < memo.length) : n2.lt(memo.length)) {
       return memo[n2.valueOf()];
     }
-    let x2 = memo[memo.length - 1];
-    for (let i = bigInt(memo.length - 1); i.lt(n2); i = i.add(1)) {
+    var x2 = memo[memo.length - 1];
+    for (var i = bigInt(memo.length - 1); i.lt(n2); i = i.add(1)) {
       x2 = f(x2);
       if (i.lt(max_index)) {
         memo.push(x2);
@@ -207,7 +207,7 @@ function extend(table_fun, key, val) {
 function evaluate_ast(ast, environment=constants) {
   if (ast[0] === 'id') {
     const id = environment(ast[1]);
-    if (!id) throw `undefined identifier "${ast[1]}"`;
+    if (!id) throw 'undefined identifier ' + ast[1];
     return id;
   } else if (ast[0] === 'lambda') {
     return (x) => evaluate_ast(ast[2], extend(environment, ast[1], x));
@@ -225,6 +225,6 @@ function evaluate(expr) {
   return evaluate_ast(parse(tokenize(expr)));
 }
 
-return {tokenize, parse, evaluate_ast, evaluate};
+return {tokenize: tokenize, parse: parse, evaluate_ast: evaluate_ast, evaluate: evaluate};
 
 })();

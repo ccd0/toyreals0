@@ -54,4 +54,5 @@ let _ =
        method nested_RI_int_ f = r_to_js (nested_RI_int (fun i -> ri_from_js (Js.Unsafe.fun_call f [| Js.Unsafe.inject i |])))
        method round x = round (r_from_js x)
        method piecewise a f g x = r_to_js (piecewise (r_from_js a) (frr_from_js f) (frr_from_js g) (r_from_js x))
+       method abs x = r_to_js (abs0 (r_from_js x))
      end)

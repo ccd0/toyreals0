@@ -197,7 +197,8 @@ const constants = table({
   intersect: (f) => (AF(f), R.nested_RI_int((i) => ARI(f(R.Z2R(i))))),
   repeat: repeat,
   round: (x) => R.round(AR(x)),
-  piecewise: (a) => (f) => (g) => (x) => R.piecewise(AR(a), AFR(f), AFR(g), AR(x))
+  piecewise: (a) => (f) => (g) => (x) => R.piecewise(AR(a), AFR(f), AFR(g), AR(x)),
+  abs: (x) => R.abs(AR(x))
 });
 
 function extend(table_fun, key, val) {

@@ -3238,4 +3238,127 @@ Proof.
   destruct HC as [HC|[HC|[HC|HC]]]; contradiction.
 Qed.
 
+Lemma abs_meets : forall x, -x =/= x -> x =/= 0.
+Proof.
+  intros x H.
+  apply (mult_apart_l _ _ (Q2R (-2))), (apart_plus_r _ _ x).
+  - apply Q2R_apart.
+    discriminate.
+  - ring_simplify.
+    ring_simplify in H.
+    exact H.
+Qed.
+
+Definition abs := piecewise 0 (fun x => -x) (fun x => x) abs_meets.
+
+Add Morphism abs with signature (eqv ==> eqv) as abs_mor.
+Proof.
+  intros x y E.
+  apply piecewise_compatible; try rewrite E; reflexivity.
+Qed.
+
+Theorem abs_neg : forall x, x <= 0 -> abs x == -x.
+Proof. apply piecewise_spec_eqv1. Qed.
+
+Theorem abs_pos : forall x, x >= 0 -> abs x == x.
+Proof. apply piecewise_spec_eqv2. Qed.
+
+Lemma neg_dn : forall (P Q : Prop), (P -> ~ Q) -> ~ ~ P -> ~ Q.
+Proof. tauto. Qed.
+
+Lemma neg_atm_atl : forall (x y : R) (P : Prop), (x <= y -> ~ P) -> (x >= y -> ~ P) -> ~ P.
+Proof.
+  intros x y P H1 H2.
+  apply (neg_dn (x <= y \/ x >= y) P).
+  - tauto.
+  - apply dn_atm_or_atl.
+Qed.
+
+Ltac neg_atm_atl x y H :=
+  match goal with | [ |- ?P ] =>
+    apply (neg_atm_atl x y);
+      intro H;
+      change P
+  end.
+
+Ltac abs_cases x H :=
+  neg_atm_atl x 0 H;
+    [rewrite (abs_neg x) by assumption|rewrite (abs_pos x) by assumption].
+
+Theorem abs_nonneg : forall x, abs x >= 0.
+Proof.
+  intro x.
+  abs_cases x H; [|trivial].
+  apply atm_opp.
+  ring_simplify; trivial.
+Qed.
+
+Theorem abs_opp : forall x, abs (- x) == abs x.
+Proof.
+  intro x.
+  abs_cases x H.
+  - assert (- x >= 0) as H2 by (apply atm_opp; ring_simplify; exact H).
+    rewrite abs_pos by assumption.
+    reflexivity.
+  - assert (- x <= 0) as H2 by (apply atm_opp; ring_simplify; exact H).
+    rewrite abs_neg by assumption.
+    ring.
+Qed.
+
+Theorem atm_abs : forall x, x <= abs x.
+Proof.
+  intro x.
+  abs_cases x H.
+  - apply (atm_plus_r _ _ x).
+    ring_simplify.
+    apply (mult_atm_l _ _ (Q2R (1 # 2))).
+    + apply Q2R_lt; reflexivity.
+    + ring_simplify; trivial.
+  - apply lt_irrefl.
+Qed.
+
+Theorem triangle_inequality : forall x y, abs (x + y) <= abs x + abs y.
+Proof.
+  intros x y.
+  abs_cases (x + y) H.
+  - setoid_replace (- (x + y)) with (- x + - y) by ring.
+    apply atm_plus; rewrite <- abs_opp; apply atm_abs.
+  - apply atm_plus; apply atm_abs.
+Qed.
+
+Theorem abs_mult : forall x y, abs (x * y) == abs x * abs y.
+Proof.
+  intros x y.
+  abs_cases x Hx; abs_cases y Hy;
+    [ rewrite <- mult_opp_opp |
+      rewrite <- abs_opp, <- mult_opp_l |
+      rewrite <- abs_opp, <- mult_opp_r |
+    ];
+    (rewrite abs_pos; [reflexivity|]);
+    apply mult_atl_0; (assumption || apply atm_opp; ring_simplify; assumption).
+Qed.
+
+Theorem abs_RI : forall x y z, abs (x - y) <= z <-> x ∈ [y - z, y + z]R.
+Proof.
+  intros x y z.
+  unfold is_element_of, RIcontents; cbn.
+  split; intro H.
+  - split; apply (atm_plus_r _ _ (- y)).
+    + apply atm_opp.
+      apply (atm_trans _ (abs (x - y))); [|ring_simplify; assumption].
+      setoid_replace (- (x + - y)) with (- (x - y)) by ring.
+      rewrite <- abs_opp.
+      apply atm_abs.
+    + apply (atm_trans _ (abs (x - y))); [|ring_simplify; assumption].
+      apply atm_abs.
+  - destruct H as [H1 H2].
+    abs_cases (x - y) H3.
+    + apply atm_opp, (atm_plus_l _ _ y).
+      setoid_replace (y + - - (x - y)) with x by ring.
+      assumption.
+    + apply (atm_plus_l _ _ y).
+      setoid_replace (y + (x - y)) with x by ring.
+      assumption.
+Qed.
+
 Unset Printing Projections.
